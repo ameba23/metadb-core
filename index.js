@@ -3,8 +3,13 @@ const fs = require('fs')
 const pull = require('pull-stream')
 const path = require('path')
 const glob = require('glob')
+const level = require('level')
+const mkdirp = require('mkdirp')
 
 const dir = './stuff'
+
+mkdirp.sync('db')
+const db = level('db')
 
 glob('**/*', {cwd: dir, nodir: true}, (err, files) => {
   if (err) throw err
@@ -16,8 +21,15 @@ glob('**/*', {cwd: dir, nodir: true}, (err, files) => {
         console.log('fffff', file, data.length)
         exif.metadata(data, (err, metadata) => {
           if (err) return cb(err)
-          console.log(metadata)
-          cb(null, metadata)
+          const metadataObj = Object.assign({}, metadata)
+          db.put(file, metadataObj, { valueEncoding: 'json' }, (err) => {
+            if (err) return cb(err)
+            db.get(file, { valueEncoding:'json' }, (err, someData) => {
+              if (err) return cb(err)
+              console.log(JSON.stringify(someData, null, 4))
+              cb(null, metadata)
+            })
+          })
         })
       })
     }),
