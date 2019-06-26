@@ -6,7 +6,7 @@ const glob = require('glob')
 const level = require('level')
 const mkdirp = require('mkdirp')
 
-const dir = './stuff'
+const dir = '../../photos'
 
 mkdirp.sync('db')
 const db = level('db')
