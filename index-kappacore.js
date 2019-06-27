@@ -1,6 +1,7 @@
 const exif = require('exiftool')
 const fs = require('fs')
 const pull = require('pull-stream')
+const chalk = require('chalk')
 const path = require('path')
 const glob = require('glob')
 const kappa = require('kappa-core')
@@ -13,8 +14,10 @@ var core = kappa('./multimetadb', {valueEncoding: 'json'})
 
 var dataAdded = 0
 
+
 core.writer('local', function (err, feed) {
   if (err) throw err
+  console.log('Scanning directory ', dir, '...')
   glob('**/*', {cwd: dir, nodir: true}, (err, files) => {
     if (err) throw err
     pull(
@@ -22,15 +25,20 @@ core.writer('local', function (err, feed) {
       pull.asyncMap((file, cb) => {
         fs.readFile(path.join(dir, file), function (err, data) {
           if (err) return cb(err)
-          const hash = sha256(data).toString('hex')
-          console.log('hash ', hash)
-          console.log('Extracting metadata from file ', file, ' of length ', data.length)
+          const hash = sha256(data).toString('base64') + '.sha256'
+          console.log(
+            'Extracting metadata from file: ',
+            chalk.green(file),
+            ' of length ',
+            chalk.green(readableBytes(data.length)),
+            chalk.blue(hash)
+          )
           exif.metadata(data, (err, metadata) => {
             if (err) return cb(err)
             const metadataObj = Object.assign({}, metadata)
             var newEntry = {
-              id: file,
-              hash,
+              id: hash,
+              filename: file,
               metadata: metadataObj
             }
             var duplicate = false
@@ -41,7 +49,7 @@ core.writer('local', function (err, feed) {
               // if (isEqual(newEntry, data)) { //lodash doesnt seem to work here
               if (JSON.stringify(data) === JSON.stringify(newEntry)) { // bad solution
                 duplicate = true
-                console.log('found a match')
+                console.log(chalk.red('File already exists in index, skipping...'))
                 feedStream.destroy()
                 cb(null, metadataObj)
               }
@@ -62,10 +70,18 @@ core.writer('local', function (err, feed) {
       }),
       pull.collect((err, datas) => {
         if (err) throw err
-        console.log('Number of metadata parsed: ', datas.length)
-        console.log('Number of metadata added: ', dataAdded)
+        console.log('Number of metadata parsed: ', chalk.green(datas.length))
+        console.log('Number of metadata added: ', chalk.green(dataAdded))
         // console.log('datas',JSON.stringify(datas, null,4))
       })
     )
   })
 })
+
+function readableBytes (bytes) {
+  if (bytes < 1) return 0 + ' B'
+  const i = Math.floor(Math.log(bytes) / Math.log(1024))
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
+
+  return (bytes / Math.pow(1024, i)).toFixed(2) * 1 + ' ' + sizes[i]
+}

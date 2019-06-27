@@ -2,15 +2,18 @@ const kappa = require('kappa-core')
 const kv = require('kappa-view-kv')
 var core = kappa('./multimetadb', {valueEncoding: 'json'})
 var memdb = require('memdb')
+// const level = require('subleveldown')
 var idx = memdb()
-var pump = require('pump')
+// var idx = level('my-db', 'boop', {valueEncoding: 'binary'})
 
-var discovery = require('discovery-swarm')
+const pump = require('pump')
+
+const discovery = require('discovery-swarm')
 
 var swarm = discovery()
 
-swarm.join('moose-p2p-app')
-// create the key-value view
+swarm.join('mouse-p2p-app')
+
 var kvIdx = kv(idx, function (msg, next) {
   if (!msg.value.id) return next()
   var ops = []
@@ -23,13 +26,17 @@ var kvIdx = kv(idx, function (msg, next) {
   next(null, ops)
 })
 
-// install key-value view into kappa-core under core.api.kv
 core.use('kv', kvIdx)
 
 
-core.ready(() => { 
-  core.api.kv.createReadStream().on('data', data => { console.log(data) })
-  
+core.ready(() => {
+  core.api.kv.createReadStream().on('data', data => { 
+    console.log(JSON.stringify(data, null, 4))
+  })
+
+  // core.api.kv.get('G_DSC_1288.jpg', function (err, values) {
+  //         console.log('kv for "foo"', values)
+  //       })  
   swarm.on('connection', (connection) => {
     console.log('new peer connected')
     pump(connection, core.replicate({ live: true }), connection)
