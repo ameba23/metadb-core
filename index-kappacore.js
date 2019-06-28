@@ -5,6 +5,7 @@ const chalk = require('chalk')
 const path = require('path')
 const glob = require('glob')
 const kappa = require('kappa-core')
+const { keysWeWant } = require('./exif-keys.json')
 const { sha256 } = require('./crypto')
 // const isEqual = require('lodash.isequal')
 
@@ -13,7 +14,6 @@ const dir = process.argv[2] // './stuff'
 var core = kappa('./multimetadb', {valueEncoding: 'json'})
 
 var dataAdded = 0
-
 
 core.writer('local', function (err, feed) {
   if (err) throw err
@@ -39,7 +39,7 @@ core.writer('local', function (err, feed) {
             var newEntry = {
               id: hash,
               filename: file,
-              metadata: metadataObj
+              metadata: reduceMetadata(metadataObj)
             }
             var duplicate = false
             // check if an identical entry exists in the feed
@@ -56,7 +56,7 @@ core.writer('local', function (err, feed) {
             })
             feedStream.on('end', () => {
               if (!duplicate) {
-                newEntry.added = new Date().toISOString()
+                newEntry.added = Date.now()
                 feed.append(newEntry, (err, seq) => {
                   if (err) throw err
                   console.log('Data was appended as entry #' + seq)
@@ -78,6 +78,15 @@ core.writer('local', function (err, feed) {
   })
 })
 
+function reduceMetadata (metadataObj) {
+  const reducedMetadata = {}
+  Object.keys(metadataObj).forEach(key => {
+    if (keysWeWant.indexOf(key) > -1) reducedMetadata[key] = metadataObj[key]
+  })
+  return reducedMetadata
+}
+
+// TODO put this in ./util
 function readableBytes (bytes) {
   if (bytes < 1) return 0 + ' B'
   const i = Math.floor(Math.log(bytes) / Math.log(1024))
