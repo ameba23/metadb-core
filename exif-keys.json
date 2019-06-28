@@ -1,0 +1,13 @@
+{
+  "keysWeWant": [
+    "fileType",
+    "fileTypeExtension",
+    "mimeType",
+    "imageWidth",
+    "imageHeight",
+    "comment",
+    "trackId",
+    "duration"
+  ]
+}
+
