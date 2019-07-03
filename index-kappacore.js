@@ -46,7 +46,7 @@ core.writer('local', function (err, feed) {
             // check if an identical entry exists in the feed
             const feedStream = feed.createReadStream({ live: false })
             feedStream.on('data', (data) => {
-              delete data.added
+              delete data.timestamp
               // if (isEqual(newEntry, data)) { //lodash doesnt seem to work here
               if (JSON.stringify(data) === JSON.stringify(newEntry)) { // bad solution
                 duplicate = true
@@ -57,7 +57,7 @@ core.writer('local', function (err, feed) {
             })
             feedStream.on('end', () => {
               if (!duplicate) {
-                newEntry.added = Date.now()
+                newEntry.timestamp = Date.now()
                 feed.append(newEntry, (err, seq) => {
                   if (err) throw err
                   console.log('Data was appended as entry #' + seq)
