@@ -17,10 +17,15 @@ swarm.join('mouse-p2p-app')
 core.use('query', view)
 
 core.ready(() => {
-  const $filter = { value: { filename: 'donkey.jpg' } }
+  const $filter = { value: { type: 'addFile', metadata: { track: 3 } } }
+  // var feeds = core.feeds()
+  // console.log('feeds', feeds)
   // const $filter = {}
   pull(
     core.api.query.read({ query: [{ $filter }] }),
+    pull.map(entry => {
+      return entry.value
+    }),
     pull.drain(console.log)
   )
   swarm.on('connection', (connection, peer) => {

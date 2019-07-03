@@ -37,6 +37,7 @@ core.writer('local', function (err, feed) {
             if (err) return cb(err)
             const metadataObj = Object.assign({}, metadata)
             var newEntry = {
+              type: 'addFile',
               id: hash,
               filename: file,
               metadata: reduceMetadata(metadataObj)
@@ -70,6 +71,7 @@ core.writer('local', function (err, feed) {
       }),
       pull.collect((err, datas) => {
         if (err) throw err
+        console.log('Feed key', feed.key)
         console.log('Number of metadata parsed: ', chalk.green(datas.length))
         console.log('Number of metadata added: ', chalk.green(dataAdded))
         // console.log('datas',JSON.stringify(datas, null,4))
@@ -81,7 +83,7 @@ core.writer('local', function (err, feed) {
 function reduceMetadata (metadataObj) {
   const reducedMetadata = {}
   Object.keys(metadataObj).forEach(key => {
-    if (keysWeWant.indexOf(key) > -1) reducedMetadata[key] = metadataObj[key]
+    if ((keysWeWant.indexOf(key) > -1) && (metadataObj[key])) reducedMetadata[key] = metadataObj[key]
   })
   return reducedMetadata
 }

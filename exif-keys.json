@@ -7,7 +7,16 @@
     "imageHeight",
     "comment",
     "trackId",
-    "duration"
+    "track",
+    "duration",
+    "title",
+    "artist",
+    "album",
+    "genre",
+    "year",
+    "composer",
+    "encodedBy",
+    "audioBitrate"
   ]
 }
 
