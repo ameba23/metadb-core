@@ -7,15 +7,16 @@ const glob = require('glob')
 const kappa = require('kappa-core')
 const { keysWeWant } = require('./exif-keys.json')
 const { sha256 } = require('./crypto')
-// const isEqual = require('lodash.isequal')
 
-const dir = process.argv[2] // './stuff'
+const dir = process.argv[2] 
+// TODO handle argument not given
+const feedName = 'local' + (process.argv[3] || '')
 
 var core = kappa('./multimetadb', {valueEncoding: 'json'})
 
 var dataAdded = 0
 
-core.writer('local', function (err, feed) {
+core.writer(feedName, function (err, feed) {
   if (err) throw err
   console.log('Scanning directory ', dir, '...')
   glob('**/*', {cwd: dir, nodir: true}, (err, files) => {
@@ -46,8 +47,9 @@ core.writer('local', function (err, feed) {
             // check if an identical entry exists in the feed
             const feedStream = feed.createReadStream({ live: false })
             feedStream.on('data', (data) => {
-              delete data.added
+              delete data.timestamp
               // if (isEqual(newEntry, data)) { //lodash doesnt seem to work here
+              // TODO: use deepmerge
               if (JSON.stringify(data) === JSON.stringify(newEntry)) { // bad solution
                 duplicate = true
                 console.log(chalk.red('File already exists in index, skipping...'))
@@ -57,7 +59,7 @@ core.writer('local', function (err, feed) {
             })
             feedStream.on('end', () => {
               if (!duplicate) {
-                newEntry.added = Date.now()
+                newEntry.timestamp = Date.now()
                 feed.append(newEntry, (err, seq) => {
                   if (err) throw err
                   console.log('Data was appended as entry #' + seq)
@@ -71,7 +73,7 @@ core.writer('local', function (err, feed) {
       }),
       pull.collect((err, datas) => {
         if (err) throw err
-        console.log('Feed key', feed.key)
+        console.log('Feed ', chalk.green(feedName), ' with key ', chalk.green(feed.key.toString('hex')))
         console.log('Number of metadata parsed: ', chalk.green(datas.length))
         console.log('Number of metadata added: ', chalk.green(dataAdded))
         // console.log('datas',JSON.stringify(datas, null,4))
