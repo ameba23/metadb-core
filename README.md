@@ -13,9 +13,9 @@ Currently a command line tool - web interface coming soon
 
 ## Command line usage
 
-`metadb index <directory>` - index a directory
-`name <name>` - give yourself a name
-`bin.js query`  - run a query
+- `metadb index <directory>` - index a directory
+- `name <name>` - give yourself a name
+- `bin.js query`  - run a query
 
 ## API
 
