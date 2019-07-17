@@ -19,7 +19,7 @@ Currently a command line tool - web interface coming soon
 - `metadb index <directory>` - index a directory
 - `metadb name <name>` - give yourself a name
 - `metadb bin.js query`  - run a query
-- `rm -rf metadb views` - delete the database and the view indexes
+- `rm -rf metadb` - delete the database and the view indexes
 
 ## API
 
@@ -38,6 +38,7 @@ Currently a command line tool - web interface coming soon
 - exiftool started as a child process.  a native library would be better
 
 ## TODO
+- handle query with no database
 - tests!
 - a web interface (choo?) served to localhost
 - run with 'forever' for swarming?
