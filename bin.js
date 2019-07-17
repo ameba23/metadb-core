@@ -40,5 +40,19 @@ function processCommand () {
     }, (argv) => {
       metadb.publishAbout(argv.name, argv.feedname, callback)
     })
+
+    .command('query', 'run a query', (yargs) => {
+      yargs
+        .option('query', {
+          describe: 'the query',
+          type: 'object'
+        })
+        .option('feedname', {
+          demandOption: false,
+          type: 'string'
+        })
+    }, (argv) => {
+      metadb.queryMfr(argv.query, argv.feedname, callback)
+    })
     .argv
 }

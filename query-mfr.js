@@ -26,8 +26,7 @@ const indexes = [
 
 
 module.exports = function (core) {
-  return function queryMfr () {
-
+  return function queryMfr (query) {
     core.use('query', Query(db, core, { indexes, validator }))
 
     var swarm = discovery()
