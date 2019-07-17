@@ -4,8 +4,7 @@ const Query = require('kappa-view-query')
 const pump = require('pump')
 const discovery = require('discovery-swarm')
 const merge = require('deepmerge')
-
-const db = level('./views')
+const path = require('path')
 
 // custom validator enabling you to write your own message schemas
 const validator = function (msg) {
@@ -25,7 +24,10 @@ const indexes = [
 ]
 
 
-module.exports = function (core) {
+module.exports = function (core, METADB_PATH) {
+  const VIEW_PATH = path.join(METADB_PATH, '/views')
+  const db = level(VIEW_PATH)
+
   return function queryMfr (query) {
     core.use('query', Query(db, core, { indexes, validator }))
 
