@@ -54,5 +54,17 @@ function processCommand () {
     }, (argv) => {
       metadb.queryMfr(argv.query, argv.feedname, callback)
     })
+
+    .command('connect', 'connect to other peers', (yargs) => {
+      yargs
+        .option('key', {
+          describe: 'key to connect to',
+          demandOption: false,
+          type: 'string'
+        })
+    }, (argv) => {
+      metadb.swarm(argv.key)
+    })
+
     .argv
 }
