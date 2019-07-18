@@ -1,4 +1,3 @@
-
 module.exports = function (core) {
   return function about (name, feedName, callback) {
     feedName = feedName || 'local'

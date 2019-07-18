@@ -5,7 +5,7 @@ const merge = require('deepmerge')
 const path = require('path')
 
 // custom validator enabling you to write your own message schemas
-const validator = function (msg) {
+const validator = (msg) => {
   if (typeof msg !== 'object') return null
   if (typeof msg.value !== 'object') return null
   if (typeof msg.value.id !== 'string') return null
@@ -23,58 +23,21 @@ const indexes = [
 
 
 module.exports = function (core, METADB_PATH) {
+  // TODO: this should probably go in index.js
   const VIEW_PATH = path.join(METADB_PATH, '/views')
   const db = level(VIEW_PATH)
-
-  return function queryMfr (query) {
+  // TODO: return should go after core.ready() ? (but then all commands would build the index)
+  return function queryMfr (query, callback) { // [opts] ?
     core.use('query', Query(db, core, { indexes, validator }))
 
-
     core.ready(() => {
-      const queryPeers = [
-        { $filter: { value: { type: 'addFile' } } },
-        { $reduce: {
-          peerId: 'key',
-          numberFiles: { $count: true }
-        } }
-      ]
-
-      const queryFiles = [
-        { $filter: { value: { type: 'addFile' } } },
-        { $reduce: {
-          hash: ['value', 'id'],
-          data: { $collect: 'value' },
-          holders: { $collect: 'key' }
-        } }
-      ]
 
       // console.log(core.api.query.explain({ live: false, reverse: true, query }))
       pull(
-        core.api.query.read({ live: false, reverse: true, query: queryFiles }),
-        pull.map(entry => {
-          var mergeEntries = {}
-          entry.data.forEach(thing => {
-            mergeEntries = merge(thing, mergeEntries)
-          })
-          entry.data = mergeEntries
-          console.log(entry)
-          return entry
-        }),
+        core.api.query.read({ live: false, reverse: true, query }),
         pull.collect((err, entries) => {
-          if (err) throw err
-          console.log('Number of entries: ', entries.length)
-
-          pull(
-            core.api.query.read({ live: false, reverse: true, query: queryPeers }),
-            pull.map(thing => {
-              console.log(thing)
-              return thing
-            }),
-            pull.collect((err, moose) => {
-              if (err) throw err
-              console.log(moose.length)
-            })
-          )
+          if (err) callback(err)
+          callback(null, entries)
         })
       )
     })
