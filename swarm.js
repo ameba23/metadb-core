@@ -10,7 +10,7 @@ module.exports = function (core) {
     // TODO: change this
     key = key || 'mouse-p2p-app'
     swarm.join(key)
-
+    console.log('Connected on ', key, '  Listening for peers....')
     swarm.on('connection', (connection, peer) => {
       console.log('New peer connected with key ', peer.id.toString('hex'))
       // TODO: pump can also take a callback?
