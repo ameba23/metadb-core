@@ -1,8 +1,6 @@
 const pull = require('pull-stream')
 const level = require('level')
 const Query = require('kappa-view-query')
-const pump = require('pump')
-const discovery = require('discovery-swarm')
 const merge = require('deepmerge')
 const path = require('path')
 
@@ -31,10 +29,6 @@ module.exports = function (core, METADB_PATH) {
   return function queryMfr (query) {
     core.use('query', Query(db, core, { indexes, validator }))
 
-    var swarm = discovery()
-
-    // TODO: change this
-    swarm.join('mouse-p2p-app')
 
     core.ready(() => {
       const queryPeers = [
@@ -83,10 +77,6 @@ module.exports = function (core, METADB_PATH) {
           )
         })
       )
-      swarm.on('connection', (connection, peer) => {
-        console.log('new peer connected with key ', peer.id.toString('hex'))
-        pump(connection, core.replicate({ live: true }), connection)
-      })
     })
   }
 }
