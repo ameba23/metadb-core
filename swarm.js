@@ -3,6 +3,9 @@ const pump = require('pump')
 
 module.exports = function (core) {
   return function swarm (key) {
+    // TODO: key can be a string, which is hashed together with a unique string for
+    // the app, and the hash used (to avoid bumping into people)
+
     // TODO: use dat-swarm-defaults?
     // add id property with local key?  (cabal does this)
     var swarm = discovery()
