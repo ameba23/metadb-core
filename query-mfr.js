@@ -1,7 +1,6 @@
 const pull = require('pull-stream')
 const level = require('level')
 const Query = require('kappa-view-query')
-const merge = require('deepmerge')
 const path = require('path')
 
 // custom validator enabling you to write your own message schemas
@@ -27,19 +26,15 @@ module.exports = function (core, METADB_PATH) {
   const VIEW_PATH = path.join(METADB_PATH, '/views')
   const db = level(VIEW_PATH)
   // TODO: return should go after core.ready() ? (but then all commands would build the index)
-  return function queryMfr (query, callback) { // [opts] ?
+  return function queryMfr (callback) {
     core.use('query', Query(db, core, { indexes, validator }))
 
     core.ready(() => {
-
+      callback()
       // console.log(core.api.query.explain({ live: false, reverse: true, query }))
-      pull(
-        core.api.query.read({ live: false, reverse: true, query }),
-        pull.collect((err, entries) => {
-          if (err) callback(err)
-          callback(null, entries)
-        })
-      )
+      // return pull(
+      //   core.api.query.read({ live: false, reverse: true, query })
+      // )
     })
   }
 }

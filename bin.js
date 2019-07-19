@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 const yargs = require('yargs')
+const pull = require('pull-stream')
 
 const metadb = require('.')
 
@@ -9,6 +10,10 @@ if (!yargsargs._[0]) yargs.showHelp()
 function callback (err, res) {
   if (err) throw err
   console.log(res)
+}
+
+function pullback (stream) {
+  return pull(stream, pull.collect(callback))
 }
 
 function processCommand () {
@@ -44,15 +49,33 @@ function processCommand () {
     .command('query', 'run a query', (yargs) => {
       yargs
         .option('query', {
-          describe: 'the query',
+          describe: 'the query object',
           type: 'object'
         })
-        .option('feedname', {
+        .option('opts', {
           demandOption: false,
-          type: 'string'
+          type: 'object'
         })
     }, (argv) => {
-      metadb.queryMfr(argv.query, argv.feedname, callback)
+      metadb.queryMfr(() => {
+        pullback(metadb.query(argv.query))
+      })
+    })
+
+    .command('query-files', 'list files in db', (yargs) => {
+      yargs.option('opts', { demandOption: false })
+    }, (argv) => {
+      metadb.queryMfr(() => {
+        pullback(metadb.queryFiles())
+      })
+    })
+
+    .command('query-peers', 'list known peers', (yargs) => {
+      yargs.option('opts', { demandOption: false })
+    }, (argv) => {
+      metadb.queryMfr(() => {
+        pullback(metadb.queryPeers())
+      })
     })
 
     .command('connect', 'connect to other peers', (yargs) => {
