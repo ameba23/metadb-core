@@ -7,7 +7,7 @@ const path = require('path')
 const validator = (msg) => {
   if (typeof msg !== 'object') return null
   if (typeof msg.value !== 'object') return null
-  if (typeof msg.value.id !== 'string') return null
+  // if (typeof msg.value.id !== 'string') return null
   if (typeof msg.value.type !== 'string') return null
   return msg
 }

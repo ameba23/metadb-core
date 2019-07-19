@@ -89,5 +89,16 @@ function processCommand () {
       metadb.swarm(argv.key)
     })
 
+    .command('request', 'publish a request', (yargs) => {
+      yargs
+        .options('files', {
+          describe: 'an array of file hashes that you want',
+          demandOption: true,
+          type: 'array'
+        })
+    }, (argv) => {
+      metadb.publishRequest(argv.files)
+    })
+
     .argv
 }
