@@ -19,10 +19,17 @@ module.exports = function(files) {
       if (err) throw err
       Dat(dat_path, (err, dat) => {
         if (err) throw err
-        dat.importFiles()
+        const progress = dat.importFiles(dat_path, (err) => {
+          if (err) throw err
+          console.log('Finished importing')
+          console.log('Archive size:', dat.archive.content.byteLength)
 
-        dat.joinNetwork()
-        console.log('My Dat link is: dat://' + dat.key.toString('hex'))
+          console.log('My Dat link is: dat://' + dat.key.toString('hex'))
+          // callback(null, dat.key)
+        })
+        progress.on('put', function (src, dest) {
+          console.log('Added', dest.name)
+        })
       })
     })
   )

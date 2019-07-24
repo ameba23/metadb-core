@@ -5,13 +5,13 @@ module.exports = function (core) {
   return function publishRequest (files, recipients, feedName, callback) {
     feedName = feedName || 'local'
 
-    var requestMsg = {
+    var msg = {
       type: 'request',
       files
     }
     core.writer(feedName, (err, feed) => {
-      aboutMsg.timestamp = Date.now()
-      const boxedMsg = box(message, recipients)
+      msg.timestamp = Date.now()
+      const boxedMsg = box(msg, recipients)
       feed.append(boxedMsg, callback)
     })
   }

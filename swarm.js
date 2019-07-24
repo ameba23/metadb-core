@@ -1,5 +1,6 @@
 const discovery = require('discovery-swarm')
 const pump = require('pump')
+const config = require('dat-swarm-defaults')
 
 module.exports = function (core) {
   return function swarm (key) {
@@ -8,7 +9,7 @@ module.exports = function (core) {
 
     // TODO: use dat-swarm-defaults?
     // add id property with local key?  (cabal does this)
-    var swarm = discovery()
+    var swarm = discovery(config())
 
     // TODO: change this
     key = key || 'mouse-p2p-app'
@@ -19,7 +20,6 @@ module.exports = function (core) {
       // TODO: pump can also take a callback?
       pump(connection, core.replicate({ live: true }), connection)
     })
-
     // callback(null, swarm) ?
   }
 }
