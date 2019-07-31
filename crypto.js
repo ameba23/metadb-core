@@ -6,6 +6,16 @@ function sha256 (msg) {
   return hash
 }
 
+function keyedHash (msg, key) {
+  if (typeof key === 'string') {
+    key = sha256(Buffer.from('key'))
+  }
+  if (typeof msg === 'string') msg = Buffer.from(msg)
+  var hash = sodium.sodium_malloc(sodium.crypto_generichash_BYTES)
+  sodium.crypto_generichash(hash, msg, key)
+  return hash
+}
+
 module.exports = {
-  sha256
+  sha256, keyedHash
 }
