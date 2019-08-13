@@ -1,19 +1,14 @@
 const { box } = require('kappa-box')
 
-// TODO: optionally make a public request?
 module.exports = function (core) {
-  return function publishRequest (files, recipients, feedName, callback) {
+  return function publishPrivate (message, recipients, feedName, callback) {
     feedName = feedName || 'local'
 
-    var msg = {
-      type: 'request',
-      files
-    }
     core.writer(feedName, (err, feed) => {
-      msg.timestamp = Date.now()
+      //  message.timestamp = Date.now()
       // TODO: check if feed.key is already there
       recipients.push(feed.key)
-      const boxedMsg = box(msg, recipients)
+      const boxedMsg = box(message, recipients)
       feed.append(boxedMsg, callback)
     })
   }
