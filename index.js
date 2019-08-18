@@ -2,9 +2,13 @@ const kappa = require('kappa-core')
 const path = require('path')
 const os = require('os')
 const mkdirp = require('mkdirp')
+const private = require('kappa-private')
+const level = require('level')
+const Query = require('kappa-view-query')
+const path = require('path')
+const queryMfr = require('./query-mfr')
 
 const IndexFiles = require('./index-kappacore')
-const QueryMfr = require('./query-mfr')
 const PublishAbout = require('./publish-about')
 const PublishRequest = require('./publish-request')
 const PublishReply = require('./publish-reply');
@@ -13,6 +17,8 @@ const QueryFiles = require('./queries/query-files')
 const QueryPeers = require('./queries/query-peers')
 const Query = require('./queries/query')
 
+const LOCAL_FEED = 'local'
+const VIEWS = (path) => path.join(path, 'views')
 
 class MetaDb {
   constructor (opts) {
@@ -20,12 +26,30 @@ class MetaDb {
     this.metaDbPath = opts.path || './metadb'
     // this will eventually be: path.join(os.homedir(), '.metadb')
     mkdirp.sync(this.metaDbPath)
-    this.core = kappa(path.join(this.metaDbPath, 'db'), { valueEncoding: 'json' })
+    this.asymmetric = new private.Asymmetric()
+    this.core = kappa(path.join(this.metaDbPath, 'db'), { valueEncoding: asymmetric.encoder() })
+    this.localKey = opts.key || null
+  }
+
+  getKeys (cb) {
+    this.core.writer(LOCAL_FEED, (err, feed) => {
+      if (err) return cb(err)
+      feed.ready(() => {
+        this.localKey = feed.key
+        private.getSecretKey(storage, this.localKey, (err, secretKey) => {
+          if (err) return cb(err)
+          this.asymmetric.secretKey = secretKey
+          cb()
+        })
+      })
+    })
   }
 
   buildIndexes (cb) {
-    return QueryMfr(this.core, this.metaDbPath)((err) => {
-      if (err) cb(err)
+    this.db = level(VIEWS(this.metaDbPath))
+    core.use('query', Query(db, this.core, queryMfr))
+    core.ready(() => {
+      // should we do if (this.key)
       this.ready = true
       cb()
     })
@@ -37,14 +61,12 @@ class MetaDb {
 
   publishRequest(files, recipients, feedName, cb) { return PublishRequest(this.core)(files, recipients, feedName, cb) }
   publishReply(key, recipient, feedname, cb) { return PublishReply(this.core)(key, recipient, feedName, cb) }
+
   queryFiles() { return QueryFiles(this.core)() }
   queryPeers() { return QueryPeers(this.core)() }
   query(query, opts) { return Query(this.core)(query, opts) }
+// module.exports.swarm = Swarm(metaDb)
 }
 
 module.exports = (opts) => new MetaDb(opts)
-
-// module.exports.swarm = Swarm(core)
-
-
 
