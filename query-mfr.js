@@ -15,21 +15,3 @@ module.exports = {
     { key: 'typ', value: [['value', 'type'], ['value', 'timestamp']] }
   ]
 }
-
-const level = require('level')
-const Query = require('kappa-view-query')
-const path = require('path')
-module.exports = function (metaDb) {
-  // TODO: this should probably go in index.js
-  const VIEW_PATH = path.join(metaDb.metaDbPath, '/views')
-  const db = level(VIEW_PATH)
-
-  // TODO: return should go after core.ready() ? (but then all commands would build the index)
-  return function queryMfr (callback) {
-    core.use('query', Query(db, core, { indexes, validator, map }))
-
-    core.ready(() => {
-      callback()
-    })
-  }
-}

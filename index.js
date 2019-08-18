@@ -2,11 +2,11 @@ const kappa = require('kappa-core')
 const path = require('path')
 const os = require('os')
 const mkdirp = require('mkdirp')
-const private = require('kappa-private')
+const kappaPrivate = require('kappa-private')
 const level = require('level')
 const Query = require('kappa-view-query')
-const path = require('path')
 const queryMfr = require('./query-mfr')
+const pull = require('pull-stream')
 
 const IndexFiles = require('./index-kappacore')
 const PublishAbout = require('./publish-about')
@@ -14,29 +14,32 @@ const PublishRequest = require('./publish-request')
 const PublishReply = require('./publish-reply');
 const Swarm = require('./swarm')
 const QueryFiles = require('./queries/query-files')
-const QueryPeers = require('./queries/query-peers')
-const Query = require('./queries/query')
 
 const LOCAL_FEED = 'local'
-const VIEWS = (path) => path.join(path, 'views')
+const DB = (dir) => path.join(dir, 'db')
+const VIEWS = (dir) => path.join(dir, 'views')
 
 class MetaDb {
   constructor (opts) {
-    this.ready = false
+    this.indexesReady = false
     this.metaDbPath = opts.path || './metadb'
     // this will eventually be: path.join(os.homedir(), '.metadb')
     mkdirp.sync(this.metaDbPath)
-    this.asymmetric = new private.Asymmetric()
-    this.core = kappa(path.join(this.metaDbPath, 'db'), { valueEncoding: asymmetric.encoder() })
-    this.localKey = opts.key || null
+    this.asymmetric = new kappaPrivate.Asymmetric()
+
+    this.core = kappa(
+      DB(this.metaDbPath),
+      { valueEncoding: this.asymmetric.encoder() }
+    )
   }
 
-  getKeys (cb) {
+  ready (cb) {
     this.core.writer(LOCAL_FEED, (err, feed) => {
       if (err) return cb(err)
       feed.ready(() => {
-        this.localKey = feed.key
-        private.getSecretKey(storage, this.localKey, (err, secretKey) => {
+        this.localFeed = feed
+        kappaPrivate.getSecretKey(DB(this.metaDbPath), this.localFeed.key, (err, secretKey) => {
+
           if (err) return cb(err)
           this.asymmetric.secretKey = secretKey
           cb()
@@ -47,26 +50,41 @@ class MetaDb {
 
   buildIndexes (cb) {
     this.db = level(VIEWS(this.metaDbPath))
-    core.use('query', Query(db, this.core, queryMfr))
-    core.ready(() => {
+    this.core.use('query', Query(this.db, this.core, queryMfr))
+    this.core.ready(() => {
       // should we do if (this.key)
-      this.ready = true
+      this.indexesReady = true
       cb()
     })
   }
 
-  indexFiles (dir, feedName, cb) { return IndexFiles(this.core)(dir, feedName, cb) }
+  indexFiles (dir, cb) { return IndexFiles(this)(dir, cb) }
 
-  publishAbout (name, feedName, cb) { return PublishAbout(this.core)(name, feedName, cb) }
+  publishAbout (name, cb) { return PublishAbout(this)(name, cb) }
 
-  publishRequest(files, recipients, feedName, cb) { return PublishRequest(this.core)(files, recipients, feedName, cb) }
-  publishReply(key, recipient, feedname, cb) { return PublishReply(this.core)(key, recipient, feedName, cb) }
+  publishRequest (files, recipients, cb) { return PublishRequest(this)(files, recipients, cb) }
+  publishReply (key, recipient, cb) { return PublishReply(this)(key, recipient, cb) }
 
-  queryFiles() { return QueryFiles(this.core)() }
-  queryPeers() { return QueryPeers(this.core)() }
-  query(query, opts) { return Query(this.core)(query, opts) }
-// module.exports.swarm = Swarm(metaDb)
+  queryFiles () { return QueryFiles(metaDb)() }
+
+  queryPeers () {
+    return this.query([
+      { $filter: { value: { type: 'addFile' } } },
+      { $reduce: {
+        peerId: 'key',
+        numberFiles: { $count: true }
+      } }
+    ])
+  }
+
+  query (query, opts = {}) {
+    if (!this.indexesReady) this.buildIndexes(this.query(query, opts))
+    return pull(
+      this.core.api.query.read(Object.assign(opts, { live: false, reverse: true, query }))
+    )
+  }
+
+  swarm (key) { return Swarm(metaDb)(key) }
 }
 
 module.exports = (opts) => new MetaDb(opts)
-

@@ -1,21 +1,26 @@
 const test = require('tape')
-const metadb = require('..')
+const MetaDb = require('..')
 const pull = require('pull-stream')
+const tmpDir = require('tmp').dirSync
 
 const name = 'alice'
 
 test('publish an about message', t => {
-  metadb.publishAbout(name, null, (err, seq) => {
-    t.notOk(err, 'does not throw err')
-    metadb.queryMfr(() => {
-      pull(
-        metadb.query([{ $filter: { value: { type: 'about', name } } }]),
-        pull.collect((err, abouts) => {
-          // todo: isabout()
-          t.ok(abouts.length > 0, 'the about message exists')
-          t.end()
-        })
-      )
+  var metaDb = MetaDb({ path: tmpDir().name })
+  metaDb.ready(() => {
+    metaDb.publishAbout(name, (err, seq) => {
+      t.error(err, 'does not throw err')
+      metaDb.buildIndexes(() => {
+        pull(
+          metaDb.query([{ $filter: { value: { type: 'about', name } } }]),
+          pull.collect((err, abouts) => {
+            t.error(err, 'does not throw err')
+            // todo: isabout()
+            t.ok(abouts.length > 0, 'the about message exists')
+            t.end()
+          })
+        )
+      })
     })
   })
 })

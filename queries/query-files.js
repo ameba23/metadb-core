@@ -11,10 +11,10 @@ const queryFiles = [
 ]
 
 // console.log(core.api.query.explain({ live: false, reverse: true, query }))
-module.exports = function (core) {
+module.exports = function (metaDb) {
   return function () { // opts?
     return pull(
-      core.api.query.read({ live: false, reverse: true, query: queryFiles }),
+      metaDb.query(queryFiles),
       pull.map(entry => {
         var mergeEntries = {}
         entry.data.forEach(thing => {

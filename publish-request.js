@@ -1,20 +1,17 @@
-const { box } = require('kappa-box')
-
-// TODO: optionally make a public request?
-module.exports = function (core) {
-  return function publishRequest (files, recipients, feedName, callback) {
-    feedName = feedName || 'local'
-
+module.exports = function (metaDb) {
+  return function publishRequest (files, recipients, callback) {
+    if (!metaDb.localFeed) return callback(new Error('No local feed'))
+    // TODO: validation
+    // TODO: use dat-encode
+    // TODO: check if feed.key is already there
+    recipients.push(metaDb.localFeed.key)
     var msg = {
       type: 'request',
-      files
+      version: '1.0.0',
+      files,
+      timestamp: Date.now(),
+      recipients: recipients.map(recipient => recipient.toString('hex'))
     }
-    core.writer(feedName, (err, feed) => {
-      msg.timestamp = Date.now()
-      // TODO: check if feed.key is already there
-      recipients.push(feed.key)
-      const boxedMsg = box(msg, recipients)
-      feed.append(boxedMsg, callback)
-    })
+    metaDb.localFeed.append(msg, callback)
   }
 }

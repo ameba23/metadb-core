@@ -1,17 +1,15 @@
-const { box } = require('kappa-box')
-
-module.exports = function (core) {
-  return function publishReply (key, recipient, feedName, callback) {
-    feedName = feedName || 'local'
-
+module.exports = function (metaDb) {
+  return function publishReply (key, recipient, callback) {
+    if (!metaDb.localFeed) return callback(new Error('No local feed'))
+    // TODO: use assert to validate
+    const recipients = [ recipient, metaDb.localFeed.key ].map(r => { r.toString('hex') })
     var msg = {
       type: 'reply',
-      key // || 'file not available'
+      version: '1.0.0',
+      key, // || 'file not available'
+      timestamp: Date.now(),
+      recipients
     }
-    core.writer(feedName, (err, feed) => {
-      msg.timestamp = Date.now()
-      const boxedMsg = box(msg, [ recipient ])
-      feed.append(boxedMsg, callback)
-    })
+    metaDb.localFeed.append(msg, callback)
   }
 }
