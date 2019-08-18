@@ -7,23 +7,44 @@ const IndexFiles = require('./index-kappacore')
 const QueryMfr = require('./query-mfr')
 const PublishAbout = require('./publish-about')
 const PublishRequest = require('./publish-request')
+const PublishReply = require('./publish-reply');
 const Swarm = require('./swarm')
 const QueryFiles = require('./queries/query-files')
 const QueryPeers = require('./queries/query-peers')
 const Query = require('./queries/query')
 
-const METADB_PATH = './metadb'
-// const METADB_PATH = path.join(os.homedir(), '.metadb')
-mkdirp.sync(METADB_PATH)
-const DB_PATH = path.join(METADB_PATH + '/db')
 
-var core = kappa(DB_PATH, { valueEncoding: 'json' })
+class MetaDb {
+  constructor (opts) {
+    this.ready = false
+    this.metaDbPath = opts.path || './metadb'
+    // this will eventually be: path.join(os.homedir(), '.metadb')
+    mkdirp.sync(this.metaDbPath)
+    this.core = kappa(path.join(this.metaDbPath, 'db'), { valueEncoding: 'json' })
+  }
 
-module.exports.queryMfr = QueryMfr(core, METADB_PATH)
-module.exports.indexFiles = IndexFiles(core)
-module.exports.publishAbout = PublishAbout(core)
-module.exports.publishRequest = PublishRequest(core)
-module.exports.swarm = Swarm(core)
-module.exports.queryFiles = QueryFiles(core)
-module.exports.queryPeers = QueryPeers(core)
-module.exports.query = Query(core)
+  buildIndexes (cb) {
+    return QueryMfr(this.core, this.metaDbPath)((err) => {
+      if (err) cb(err)
+      this.ready = true
+      cb()
+    })
+  }
+
+  indexFiles (dir, feedName, cb) { return IndexFiles(this.core)(dir, feedName, cb) }
+
+  publishAbout (name, feedName, cb) { return PublishAbout(this.core)(name, feedName, cb) }
+
+  publishRequest(files, recipients, feedName, cb) { return PublishRequest(this.core)(files, recipients, feedName, cb) }
+  publishReply(key, recipient, feedname, cb) { return PublishReply(this.core)(key, recipient, feedName, cb) }
+  queryFiles() { return QueryFiles(this.core)() }
+  queryPeers() { return QueryPeers(this.core)() }
+  query(query, opts) { return Query(this.core)(query, opts) }
+}
+
+module.exports = (opts) => new MetaDb(opts)
+
+// module.exports.swarm = Swarm(core)
+
+
+

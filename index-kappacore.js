@@ -9,8 +9,8 @@ const { sha256 } = require('./crypto')
 const { readableBytes } = require('./util')
 
 
-module.exports = function indexKappa(core) {
-  return function (dir, feedName) {
+module.exports = function indexKappa (core) {
+  return function (dir, feedName, cb) {
     feedName = feedName || 'local'
     var dataAdded = 0
 
@@ -75,6 +75,7 @@ module.exports = function indexKappa(core) {
             console.log('Number of metadata parsed: ', chalk.green(datas.length))
             console.log('Number of metadata added: ', chalk.green(dataAdded))
             // console.log('datas',JSON.stringify(datas, null,4))
+            cb()
           })
         )
       })
