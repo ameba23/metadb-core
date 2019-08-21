@@ -2,7 +2,8 @@ module.exports = function (metaDb) {
   return function publishReply (key, recipient, callback) {
     if (!metaDb.localFeed) return callback(new Error('No local feed'))
     // TODO: use assert to validate
-    const recipients = [ recipient, metaDb.localFeed.key ].map(r => { r.toString('hex') })
+    // TODO: check if feed.key is already there
+    const recipients = [recipient, metaDb.localFeed.key].map(r => { r.toString('hex') })
     var msg = {
       type: 'reply',
       version: '1.0.0',
