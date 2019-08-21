@@ -11,7 +11,6 @@ test('publish a request message', t => {
   metaDb.ready(() => {
     metaDb.publishRequest(files, recipients, (err, seq) => {
       t.notOk(err, 'does not throw err')
-    console.log(metaDb.localFeed.key.toString('hex'))
       metaDb.buildIndexes(() => {
         pull(
           metaDb.query([{ $filter: { value: { type: 'request', files } } }]),

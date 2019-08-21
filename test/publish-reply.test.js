@@ -9,7 +9,6 @@ const recipient = '3c6c1fc2ac75cee8856df0c941cdcc0f0ae1337bcecaf6f89bd337ed1c2fe
 test('publish a reply message', t => {
   var metaDb = MetaDb({ path: tmpDir().name })
   metaDb.ready(() => {
-    console.log(metaDb.localFeed.key.toString('hex'))
     metaDb.publishReply(key, recipient, (err, seq) => {
       t.notOk(err, 'does not throw err')
       metaDb.buildIndexes(() => {
@@ -17,7 +16,6 @@ test('publish a reply message', t => {
           metaDb.query([{ $filter: { value: { type: 'reply', key } } }]),
           pull.collect((err, replies) => {
             // todo: isabout()
-            console.log(replies)
             t.error(err, 'does not throw err')
             t.equal(replies.length, 1, 'The reply message exists')
             t.end()
