@@ -1,13 +1,12 @@
-module.exports = function (core) {
-  return function about (name, feedName, callback) {
-    feedName = feedName || 'local'
+module.exports = function (metaDb) {
+  return function about (name, callback) {
+    if (!metaDb.localFeed) return callback(new Error('No local feed'))
     var aboutMsg = {
       type: 'about',
-      name
+      version: '1.0.0',
+      name,
+      timestamp: Date.now()
     }
-    core.writer(feedName, (err, feed) => {
-      aboutMsg.timestamp = Date.now()
-      feed.append(aboutMsg, callback)
-    })
+    metaDb.localFeed.append(aboutMsg, callback)
   }
 }

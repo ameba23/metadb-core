@@ -2,7 +2,7 @@
 const yargs = require('yargs')
 const pull = require('pull-stream')
 
-const metadb = require('.')
+const metadb = require('.')()
 
 const yargsargs = processCommand()
 if (!yargsargs._[0]) yargs.showHelp()
@@ -24,12 +24,8 @@ function processCommand () {
           describe: 'directory to scan',
           type: 'string'
         })
-        .option('feedname', {
-          demandOption: false,
-          type: 'string'
-        })
     }, (argv) => {
-      metadb.indexFiles(argv.directory, argv.feedname)
+      metadb.indexFiles(argv.directory, callback)
     })
 
     .command('name <name>', 'give yourself a name', (yargs) => {
@@ -38,12 +34,8 @@ function processCommand () {
           describe: 'a name',
           type: 'string'
         })
-        .option('feedname', {
-          demandOption: false,
-          type: 'string'
-        })
     }, (argv) => {
-      metadb.publishAbout(argv.name, argv.feedname, callback)
+      metadb.publishAbout(argv.name, callback)
     })
 
     .command('query', 'run a query', (yargs) => {
@@ -52,12 +44,12 @@ function processCommand () {
           describe: 'the query object',
           type: 'object'
         })
-        .option('opts', {
-          demandOption: false,
-          type: 'object'
-        })
+        // .option('opts', {
+        //   demandOption: false,
+        //   type: 'object'
+        // })
     }, (argv) => {
-      metadb.queryMfr(() => {
+      metadb.buildIndexes(() => {
         pullback(metadb.query(argv.query))
       })
     })
@@ -65,7 +57,7 @@ function processCommand () {
     .command('query-files', 'list files in db', (yargs) => {
       yargs.option('opts', { demandOption: false })
     }, (argv) => {
-      metadb.queryMfr(() => {
+      metadb.buildIndexes(() => {
         pullback(metadb.queryFiles())
       })
     })
@@ -73,7 +65,7 @@ function processCommand () {
     .command('query-peers', 'list known peers', (yargs) => {
       yargs.option('opts', { demandOption: false })
     }, (argv) => {
-      metadb.queryMfr(() => {
+      metadb.buildIndexes(() => {
         pullback(metadb.queryPeers())
       })
     })

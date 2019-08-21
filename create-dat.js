@@ -6,29 +6,31 @@ const pull = require('pull-stream')
 
 const dat_path = './adat'
 
+const log = console.log
+
 // module.exports = function (hashes) {}
-module.exports = function(files) {
+module.exports = function(files, callback) {
   mkdirp.sync(dat_path)
   pull(
     pull.values(files),
     pull.asyncMap((file, cb) => {
-      // note: this will throw an err if the symlink already exists
+      // TODO: this will throw an err if the symlink already exists
       fs.symlink(file, path.join(dat_path, path.basename(file)), cb)
     }),
     pull.collect((err, done) => {
-      if (err) throw err
+      if (err) return cb(err)
       Dat(dat_path, (err, dat) => {
-        if (err) throw err
+        if (err) return cb(err)
         const progress = dat.importFiles(dat_path, (err) => {
-          if (err) throw err
-          console.log('Finished importing')
-          console.log('Archive size:', dat.archive.content.byteLength)
+          if (err) return cb(err)
+          log('Finished importing')
+          log('Archive size:', dat.archive.content.byteLength)
 
-          console.log('My Dat link is: dat://' + dat.key.toString('hex'))
-          // callback(null, dat.key)
+          log('Dat link is: dat://' + dat.key.toString('hex'))
+          callback(null, dat.key)
         })
         progress.on('put', function (src, dest) {
-          console.log('Added', dest.name)
+          log('Added', dest.name)
         })
       })
     })
