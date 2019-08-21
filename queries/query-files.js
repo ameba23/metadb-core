@@ -3,11 +3,13 @@ const pull = require('pull-stream')
 
 const queryFiles = [
   { $filter: { value: { type: 'addFile' } } },
-  { $reduce: {
-    hash: ['value', 'id'],
-    data: { $collect: 'value' },
-    holders: { $collect: 'key' }
-  } }
+  {
+    $reduce: {
+      hash: ['value', 'id'],
+      data: { $collect: 'value' },
+      holders: { $collect: 'key' }
+    }
+  }
 ]
 
 // console.log(core.api.query.explain({ live: false, reverse: true, query }))
