@@ -1,17 +1,16 @@
 const kappa = require('kappa-core')
 const path = require('path')
-const os = require('os')
 const mkdirp = require('mkdirp')
 const kappaPrivate = require('kappa-private')
 const level = require('level')
-const Query = require('kappa-view-query')
+const Query = require('kappa-view-pull-query')
 const queryMfr = require('./query-mfr')
 const pull = require('pull-stream')
 
 const IndexFiles = require('./index-kappacore')
 const PublishAbout = require('./publish-about')
 const PublishRequest = require('./publish-request')
-const PublishReply = require('./publish-reply');
+const PublishReply = require('./publish-reply')
 const Swarm = require('./swarm')
 const QueryFiles = require('./queries/query-files')
 
@@ -20,7 +19,7 @@ const DB = (dir) => path.join(dir, 'db')
 const VIEWS = (dir) => path.join(dir, 'views')
 
 class MetaDb {
-  constructor (opts) {
+  constructor (opts = {}) {
     this.indexesReady = false
     this.metaDbPath = opts.path || './metadb'
     // this will eventually be: path.join(os.homedir(), '.metadb')
@@ -39,7 +38,6 @@ class MetaDb {
       feed.ready(() => {
         this.localFeed = feed
         kappaPrivate.getSecretKey(DB(this.metaDbPath), this.localFeed.key, (err, secretKey) => {
-
           if (err) return cb(err)
           this.asymmetric.secretKey = secretKey
           cb()
@@ -65,26 +63,28 @@ class MetaDb {
   publishRequest (files, recipients, cb) { return PublishRequest(this)(files, recipients, cb) }
   publishReply (key, recipient, cb) { return PublishReply(this)(key, recipient, cb) }
 
-  queryFiles () { return QueryFiles(metaDb)() }
+  queryFiles () { return QueryFiles(this)() }
 
   queryPeers () {
     return this.query([
       { $filter: { value: { type: 'addFile' } } },
-      { $reduce: {
-        peerId: 'key',
-        numberFiles: { $count: true }
-      } }
+      {
+        $reduce: {
+          peerId: 'key',
+          numberFiles: { $count: true }
+        }
+      }
     ])
   }
 
   query (query, opts = {}) {
-    if (!this.indexesReady) this.buildIndexes(this.query(query, opts))
+    if (!this.indexesReady) throw new Error('Indexes not ready, run buildIndexes')
     return pull(
       this.core.api.query.read(Object.assign(opts, { live: false, reverse: true, query }))
     )
   }
 
-  swarm (key) { return Swarm(metaDb)(key) }
+  swarm (key) { return Swarm(this)(key) }
 }
 
 module.exports = (opts) => new MetaDb(opts)
