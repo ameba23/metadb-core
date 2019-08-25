@@ -7,9 +7,11 @@ const metadb = require('.')()
 const yargsargs = processCommand()
 if (!yargsargs._[0]) yargs.showHelp()
 
+const log = console.log
+
 function callback (err, res) {
   if (err) throw err
-  console.log(res)
+  if (res) log(res)
 }
 
 function pullback (stream) {
@@ -25,7 +27,9 @@ function processCommand () {
           type: 'string'
         })
     }, (argv) => {
-      metadb.indexFiles(argv.directory, callback)
+      metadb.ready(() => {
+        metadb.indexFiles(argv.directory, callback)
+      })
     })
 
     .command('name <name>', 'give yourself a name', (yargs) => {
@@ -35,7 +39,9 @@ function processCommand () {
           type: 'string'
         })
     }, (argv) => {
-      metadb.publishAbout(argv.name, callback)
+      metadb.ready(() => {
+        metadb.publishAbout(argv.name, callback)
+      })
     })
 
     .command('query', 'run a query', (yargs) => {
@@ -49,24 +55,30 @@ function processCommand () {
         //   type: 'object'
         // })
     }, (argv) => {
-      metadb.buildIndexes(() => {
-        pullback(metadb.query(argv.query))
+      metadb.ready(() => {
+        metadb.buildIndexes(() => {
+          pullback(metadb.query(argv.query))
+        })
       })
     })
 
     .command('query-files', 'list files in db', (yargs) => {
       yargs.option('opts', { demandOption: false })
     }, (argv) => {
-      metadb.buildIndexes(() => {
-        pullback(metadb.queryFiles())
+      metadb.ready(() => {
+        metadb.buildIndexes(() => {
+          pullback(metadb.queryFiles())
+        })
       })
     })
 
     .command('query-peers', 'list known peers', (yargs) => {
       yargs.option('opts', { demandOption: false })
     }, (argv) => {
-      metadb.buildIndexes(() => {
-        pullback(metadb.queryPeers())
+      metadb.ready(() => {
+        metadb.buildIndexes(() => {
+          pullback(metadb.queryPeers())
+        })
       })
     })
 
@@ -89,7 +101,9 @@ function processCommand () {
           type: 'array'
         })
     }, (argv) => {
-      metadb.publishRequest(argv.files)
+      metadb.ready(() => {
+        metadb.publishRequest(argv.files, callback)
+      })
     })
 
     .argv

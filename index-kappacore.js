@@ -1,27 +1,27 @@
-const exif = require('exiftool')
 const fs = require('fs')
 const pull = require('pull-stream')
 const chalk = require('chalk')
 const path = require('path')
 const glob = require('glob')
-const { keysWeWant } = require('./exif-keys.json')
 const { sha256 } = require('./crypto')
 const { readableBytes } = require('./util')
+const exifExtract = require('./exif-extract')
 
 const log = console.log
 
 module.exports = function indexKappa (metaDb) {
-  return function (dir, cb) {
-    if (!metaDb.localFeed) return cb(new Error('No local feed, call ready()'))
+  return function (dir, callback) {
+    if (!metaDb.localFeed) return callback(new Error('No local feed, call ready()'))
     var dataAdded = 0
 
     log('Scanning directory ', dir, '...')
+    // TODO write full directory path to config
     glob('**/*', {cwd: dir, nodir: true}, (err, files) => {
-      if (err) return cb(err)
+      if (err) return callback(err)
       pull(
         pull.values(files),
         pull.asyncMap((file, cb) => {
-          fs.readFile(path.join(dir, file), function (err, data) {
+          fs.readFile(path.join(dir, file), (err, data) => {
             if (err) return cb(err)
             const hash = sha256(data).toString('base64') + '.sha256'
             log(
@@ -31,14 +31,14 @@ module.exports = function indexKappa (metaDb) {
               chalk.green(readableBytes(data.length)),
               chalk.blue(hash)
             )
-            exif.metadata(data, (err, metadata) => {
+            exifExtract(data, (err, metadata) => {
               if (err) return cb(err)
-              const metadataObj = Object.assign({}, metadata)
+
               var newEntry = {
                 type: 'addFile',
                 id: hash,
                 filename: file,
-                metadata: reduceMetadata(metadataObj)
+                metadata
               }
               var duplicate = false
               // check if an identical entry exists in the feed
@@ -51,7 +51,7 @@ module.exports = function indexKappa (metaDb) {
                   duplicate = true
                   log(chalk.red('File already exists in index, skipping...'))
                   feedStream.destroy()
-                  cb(null, metadataObj)
+                  cb(null, newEntry)
                 }
               })
               feedStream.on('end', () => {
@@ -61,7 +61,7 @@ module.exports = function indexKappa (metaDb) {
                     if (err) throw err
                     log('Data was appended as entry #' + seq)
                     dataAdded += 1
-                    cb(null, metadataObj)
+                    cb(null, newEntry)
                   })
                 }
               })
@@ -69,25 +69,16 @@ module.exports = function indexKappa (metaDb) {
           })
         }),
         pull.collect((err, datas) => {
-          if (err) return cb(err)
+          // TODO: don't need to complain if just one file wouldnt read
+          if (err) return callback(err)
           // todo log feedname
           log('Feed key ', chalk.green(metaDb.localFeed.key.toString('hex')))
           log('Number of metadata parsed: ', chalk.green(datas.length))
           log('Number of metadata added: ', chalk.green(dataAdded))
           // console.log('datas',JSON.stringify(datas, null,4))
-          cb()
+          callback()
         })
       )
     })
   }
 }
-
-
-function reduceMetadata (metadataObj) {
-  const reducedMetadata = {}
-  Object.keys(metadataObj).forEach(key => {
-    if ((keysWeWant.indexOf(key) > -1) && (metadataObj[key])) reducedMetadata[key] = metadataObj[key]
-  })
-  return reducedMetadata
-}
-
