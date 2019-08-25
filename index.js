@@ -26,6 +26,8 @@ class MetaDb {
     mkdirp.sync(this.metaDbPath)
     this.asymmetric = new kappaPrivate.Asymmetric()
 
+    this.shares = {}
+
     this.core = kappa(
       DB(this.metaDbPath),
       { valueEncoding: this.asymmetric.encoder() }
@@ -75,6 +77,30 @@ class MetaDb {
         }
       }
     ])
+  }
+
+  myFiles () {
+    return pull(
+      this.queryFiles(),
+      pull.filter((file) => {
+        // TODO use lodash get
+        return file.holders
+          ? file.holders.indexOf(this.localFeed.key.toString('hex')) > -1
+          : false
+      })
+    )
+  }
+
+  byExtention (extentions) {
+    if (typeof extentions === 'string') extentions = [extentions]
+    extentions = extentions.map(e => e.toLowerCase())
+    return pull(
+      this.queryFiles(),
+      pull.filter((file) => {
+        // TODO lodash get
+        return extentions.indexOf(file.data.filename.split('.').pop().toLowerCase()) > -1
+      })
+    )
   }
 
   query (query, opts = {}) {

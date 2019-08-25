@@ -11,7 +11,7 @@ const log = console.log
 
 function callback (err, res) {
   if (err) throw err
-  if (res) log(res)
+  if (res) log(JSON.stringify(res, null, 4))
 }
 
 function pullback (stream) {
@@ -68,6 +68,30 @@ function processCommand () {
       metadb.ready(() => {
         metadb.buildIndexes(() => {
           pullback(metadb.queryFiles())
+        })
+      })
+    })
+
+    .command('query-myfiles', 'list files in db indexed locally', (yargs) => {
+    }, (argv) => {
+      metadb.ready(() => {
+        metadb.buildIndexes(() => {
+          pullback(metadb.myFiles())
+        })
+      })
+    })
+    .command('query-byExtention', 'list files with a particular extention', (yargs) => {
+      yargs
+        .option('opts', { demandOption: false })
+        .option('extention', {
+          describe: 'the extention',
+          demandOption: true,
+          type: 'string'
+        })
+    }, (argv) => {
+      metadb.ready(() => {
+        metadb.buildIndexes(() => {
+          pullback(metadb.byExtention(argv.extention))
         })
       })
     })

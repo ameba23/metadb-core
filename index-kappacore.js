@@ -12,8 +12,10 @@ const log = console.log
 module.exports = function indexKappa (metaDb) {
   return function (dir, callback) {
     if (!metaDb.localFeed) return callback(new Error('No local feed, call ready()'))
+    var highestSeq
     var dataAdded = 0
-
+    const lowestSeq = metaDb.localFeed.length
+    log('lowest seq = ', metaDb.localFeed.length)
     log('Scanning directory ', dir, '...')
     // TODO write full directory path to config
     glob('**/*', {cwd: dir, nodir: true}, (err, files) => {
@@ -60,6 +62,7 @@ module.exports = function indexKappa (metaDb) {
                   metaDb.localFeed.append(newEntry, (err, seq) => {
                     if (err) throw err
                     log('Data was appended as entry #' + seq)
+                    highestSeq = seq
                     dataAdded += 1
                     cb(null, newEntry)
                   })
@@ -75,6 +78,11 @@ module.exports = function indexKappa (metaDb) {
           log('Feed key ', chalk.green(metaDb.localFeed.key.toString('hex')))
           log('Number of metadata parsed: ', chalk.green(datas.length))
           log('Number of metadata added: ', chalk.green(dataAdded))
+          if (dataAdded > 0) {
+            this.shares[highestSeq] = dir
+            // TODO save to config file
+            log(`added shares sequence numbers ${chalk.green(lowestSeq)} to ${chalk.green(highestSeq)}`)
+          }
           // console.log('datas',JSON.stringify(datas, null,4))
           callback()
         })
