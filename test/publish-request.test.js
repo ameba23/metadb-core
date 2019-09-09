@@ -2,6 +2,7 @@ const test = require('tape')
 const MetaDb = require('..')
 const pull = require('pull-stream')
 const tmpDir = require('tmp').dirSync
+const { isRequest } = require('../schemas')
 
 const files = ['xvhiEpLSt/XFGCcHmim/4/r6i0InGaJ6GNPS19ciolY=.sha256']
 const recipients = []
@@ -14,6 +15,7 @@ test('publish a request message', t => {
       metaDb.buildIndexes(() => {
         pull(
           metaDb.query([{ $filter: { value: { type: 'request', files } } }]),
+          pull.filter(message => isRequest(message.value)),
           pull.collect((err, requests) => {
             // todo: isabout()
             t.error(err, 'does not throw err')

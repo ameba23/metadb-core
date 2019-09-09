@@ -27,6 +27,7 @@ class MetaDb {
     this.asymmetric = new kappaPrivate.Asymmetric()
 
     this.shares = {}
+    this.peerNames = {}
 
     this.core = kappa(
       DB(this.metaDbPath),
@@ -87,6 +88,26 @@ class MetaDb {
         return file.holders
           ? file.holders.indexOf(this.localFeed.key.toString('hex')) > -1
           : false
+      })
+    )
+  }
+
+  filenameSubstring (substrings) {
+    if (typeof substrings === 'string') substrings = [substrings]
+    substrings = substrings.map(s => s.toLowerCase())
+    return pull(
+      this.queryFiles(),
+      pull.filter((file) => {
+        var found = 0
+        substrings.forEach(substring => {
+          // search term beginning with ! filter results which do not contain the term
+          if (substring[0] === '!') {
+            if (file.data.filename.toLowerCase().includes(substring.slice(1))) return 0
+          } else {
+            if (file.data.filename.toLowerCase().includes(substring)) found++
+          }
+        })
+        return found
       })
     )
   }

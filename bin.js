@@ -96,6 +96,21 @@ function processCommand () {
       })
     })
 
+    .command('substring', 'list files names containing a particular substring', (yargs) => {
+      yargs
+        .option('opts', { demandOption: false })
+        .option('substring', {
+          describe: 'the search term',
+          demandOption: true,
+          type: 'string'
+        })
+    }, (argv) => {
+      metadb.ready(() => {
+        metadb.buildIndexes(() => {
+          pullback(metadb.filenameSubstring(argv.substring))
+        })
+      })
+    })
     .command('query-peers', 'list known peers', (yargs) => {
       yargs.option('opts', { demandOption: false })
     }, (argv) => {

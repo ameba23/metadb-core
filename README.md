@@ -69,4 +69,5 @@ Publish a reply containing a dat link for the the requested files
 - handle query with no database
 - a web interface (choo?) served to localhost
 - run with 'forever' for swarming?
+- yaml config file with shares
 - serve a requested file, publish a private reply with the discovery key 

@@ -2,6 +2,7 @@ const test = require('tape')
 const MetaDb = require('..')
 const pull = require('pull-stream')
 const tmpDir = require('tmp').dirSync
+const { isAbout } = require('../schemas')
 
 const name = 'alice'
 
@@ -13,6 +14,7 @@ test('publish an about message', t => {
       metaDb.buildIndexes(() => {
         pull(
           metaDb.query([{ $filter: { value: { type: 'about', name } } }]),
+          pull.filter(message => isAbout(message.value)),
           pull.collect((err, abouts) => {
             t.error(err, 'does not throw err')
             // todo: isabout()

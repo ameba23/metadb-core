@@ -7,7 +7,7 @@ const type = (messageType) => { return { required: true, type: 'string', pattern
 const recipients = {
   type: 'array',
   maxItems: 7,
-  minItems: 2,
+  minItems: 1,
   items: {
     type: 'string'
     // TODO: regex
