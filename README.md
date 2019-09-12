@@ -70,4 +70,5 @@ Publish a reply containing a dat link for the the requested files
 - a web interface (choo?) served to localhost
 - run with 'forever' for swarming?
 - yaml config file with shares
+- assert validation
 - serve a requested file, publish a private reply with the discovery key 

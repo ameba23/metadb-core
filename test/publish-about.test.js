@@ -19,7 +19,10 @@ test('publish an about message', t => {
             t.error(err, 'does not throw err')
             // todo: isabout()
             t.ok(abouts.length > 0, 'the about message exists')
-            t.end()
+            metaDb.readMessages(() => {
+              console.log(metaDb.peerNames)
+              t.end()
+            })
           })
         )
       })

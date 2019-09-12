@@ -61,6 +61,11 @@ const isReply = validator({
       type: 'string'
       // TODO: regex
     },
+    branch: {
+      required: true,
+      type: 'string'
+      // TODO: regex
+    },
     recipients
   }
 })

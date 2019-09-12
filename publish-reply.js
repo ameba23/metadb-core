@@ -1,5 +1,6 @@
+
 module.exports = function (metaDb) {
-  return function publishReply (key, recipient, callback) {
+  return function publishReply (key, recipient, branch, callback) {
     if (!metaDb.localFeed) return callback(new Error('No local feed'))
     // TODO: use assert to validate
     // TODO: check if feed.key is already there
@@ -9,9 +10,14 @@ module.exports = function (metaDb) {
       type: 'reply',
       version: '1.0.0',
       key, // || 'file not available'
+      branch,
       timestamp: Date.now(),
       recipients
     }
     metaDb.localFeed.append(msg, callback)
   }
+}
+
+function assert (condition, message, callback) {
+  if (!condition) return callback(new Error('message'))
 }

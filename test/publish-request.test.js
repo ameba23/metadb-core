@@ -17,7 +17,6 @@ test('publish a request message', t => {
           metaDb.query([{ $filter: { value: { type: 'request', files } } }]),
           pull.filter(message => isRequest(message.value)),
           pull.collect((err, requests) => {
-            // todo: isabout()
             t.error(err, 'does not throw err')
             t.equal(requests.length, 1, 'The request message exists')
             t.end()

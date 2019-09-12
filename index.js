@@ -13,6 +13,8 @@ const PublishRequest = require('./publish-request')
 const PublishReply = require('./publish-reply')
 const Swarm = require('./swarm')
 const QueryFiles = require('./queries/query-files')
+const QueryAbouts = require('./queries/query-abouts')
+const RequestReply = require('./queries/request-reply')
 
 const LOCAL_FEED = 'local'
 const DB = (dir) => path.join(dir, 'db')
@@ -28,6 +30,7 @@ class MetaDb {
 
     this.shares = {}
     this.peerNames = {}
+    this.repliedTo = []
 
     this.core = kappa(
       DB(this.metaDbPath),
@@ -40,7 +43,8 @@ class MetaDb {
       if (err) return cb(err)
       feed.ready(() => {
         this.localFeed = feed
-        kappaPrivate.getSecretKey(DB(this.metaDbPath), this.localFeed.key, (err, secretKey) => {
+        this.key = feed.key
+        kappaPrivate.getSecretKey(DB(this.metaDbPath), this.key, (err, secretKey) => {
           if (err) return cb(err)
           this.asymmetric.secretKey = secretKey
           cb()
@@ -59,12 +63,19 @@ class MetaDb {
     })
   }
 
+  readMessages (cb) {
+    if (!this.indexesReady) this.buildIndexes(this.readMessages(cb))
+    this.queryAbouts(() => {
+      this.requestReply(cb)
+    })
+  }
+
   indexFiles (dir, cb) { return IndexFiles(this)(dir, cb) }
 
   publishAbout (name, cb) { return PublishAbout(this)(name, cb) }
 
   publishRequest (files, recipients, cb) { return PublishRequest(this)(files, recipients, cb) }
-  publishReply (key, recipient, cb) { return PublishReply(this)(key, recipient, cb) }
+  publishReply (...args) { return PublishReply(this)(...args) }
 
   queryFiles () { return QueryFiles(this)() }
 
@@ -124,6 +135,8 @@ class MetaDb {
     )
   }
 
+  requestReply (...args) { return RequestReply(this)(...args) }
+  queryAbouts (cb) { return QueryAbouts(this)(cb) }
   query (query, opts = {}) {
     if (!this.indexesReady) throw new Error('Indexes not ready, run buildIndexes')
     return pull(
