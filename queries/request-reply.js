@@ -1,5 +1,7 @@
 const pull = require('pull-stream')
 const { isRequest, isReply } = require('../schemas')
+const OwnFilesFromHashes = require('./own-files-from-hashes')
+const createDat = require('../create-dat')
 
 module.exports = function (metaDb) {
   return function (callback) {
@@ -28,14 +30,18 @@ module.exports = function (metaDb) {
     }
 
     function processRequest (request) {
-      request.value.files.map((file) => {
-        // check we have it
-        // look up the filename
-        // look up the rest of the path using metaDb.shares[] - need helper fn
-        // call createDat
-        // if problems - reply with an error message
-        // call publishReply
-        // if all goes well, metaDb.repliedTo.push(reply.branch)
+      OwnFilesFromHashes(metaDb)(request.value.files, (err, filePaths) => {
+        if (err || !filePaths.length) {
+          // reply should contain an error message
+        }
+        createDat(filePaths, (err, datKey) => {
+          const branch = `${request.key}@${request.seq}`
+          metaDb.publishReply(key, request.key, branch, (err, seq) => {
+            if (err) callback(err) // new error 'problem publishing?'
+            metaDb.repliedTo.push(branch)
+            callback()
+          })
+        })
       })
     }
   }
