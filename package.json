@@ -1,13 +1,13 @@
 {
   "name": "metadb",
   "version": "1.0.0",
-  "description": "",
+  "description": "Index and share media files using kappa-core",
   "main": "index.js",
   "scripts": {
     "test": "tape test/**/*.test.js | tap-spec"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "ameba23",
+  "license": "AGPL-3.0-only",
   "dependencies": {
     "chalk": "^2.4.2",
     "dat-node": "^3.5.15",
@@ -35,5 +35,22 @@
     "tap-spec": "^5.0.0",
     "tape": "^4.11.0",
     "tmp": "^0.1.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ameba23/metadb.git"
+  },
+  "keywords": [
+    "metadb",
+    "peer-to-peer",
+    "p2p",
+    "dat",
+    "kappa-core",
+    "exiftool",
+    "filesharing"
+  ],
+  "bugs": {
+    "url": "https://github.com/ameba23/metadb/issues"
+  },
+  "homepage": "https://github.com/ameba23/metadb"
 }
