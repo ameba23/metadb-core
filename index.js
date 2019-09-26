@@ -6,6 +6,7 @@ const level = require('level')
 const Query = require('kappa-view-pull-query')
 const queryMfr = require('./query-mfr')
 const pull = require('pull-stream')
+const os = require('os')
 
 const IndexFiles = require('./index-kappacore')
 const PublishAbout = require('./publish-about')
@@ -23,8 +24,7 @@ const VIEWS = (dir) => path.join(dir, 'views')
 class MetaDb {
   constructor (opts = {}) {
     this.indexesReady = false
-    this.metaDbPath = opts.path || './metadb'
-    // this will eventually be: path.join(os.homedir(), '.metadb')
+    this.metaDbPath = opts.path || path.join(os.homedir(), '.metadb')
     mkdirp.sync(this.metaDbPath)
     this.asymmetric = new kappaPrivate.Asymmetric()
 
