@@ -5,7 +5,7 @@ const queryFiles = [
   { $filter: { value: { type: 'addFile' } } },
   {
     $reduce: {
-      hash: ['value', 'id'],
+      sha256: ['value', 'sha256'],
       data: { $collect: 'value' },
       holders: { $collect: 'key' }
     }
@@ -24,6 +24,11 @@ module.exports = function (metaDb) {
         })
         entry.data = mergeEntries
         return entry
+      }),
+      pull.map(entry => {
+        delete entry.data.type
+        entry.data.holders = entry.holders
+        return entry.data
       })
     )
   }

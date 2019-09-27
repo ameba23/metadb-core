@@ -7,6 +7,7 @@ module.exports = function (data, callback) {
     callback(null, reduceMetadata(metadata))
   })
 }
+// TODO binary option -b extracts 'picture' or 'thumbnail'
 
 function reduceMetadata (metadataObj) {
   const reducedMetadata = {}

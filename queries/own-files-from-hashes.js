@@ -9,7 +9,7 @@ module.exports = function (metaDb) {
     const key = metaDb.key.toString('hex')
     pull(
       metaDb.query([{ $filter: { key, value: { type: 'addFile' } } }]),
-      pull.filter(file => hashList.indexOf(file.value.id) > -1),
+      pull.filter(file => hashList.indexOf(file.value.sha256) > -1),
       metaDb.map(file => getFullPath(file.value.filename, file.seq, metaDb.shares)),
       pull.collect(callback)
     )

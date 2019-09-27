@@ -2,6 +2,7 @@
   "keysWeWant": [
     "fileType",
     "fileTypeExtension",
+    "fileSize",
     "mimeType",
     "imageWidth",
     "imageHeight",
