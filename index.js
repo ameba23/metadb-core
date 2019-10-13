@@ -80,15 +80,21 @@ class MetaDb {
   queryFiles () { return QueryFiles(this)() }
 
   queryPeers () {
-    return this.query([
-      { $filter: { value: { type: 'addFile' } } },
-      {
-        $reduce: {
-          peerId: 'key',
-          numberFiles: { $count: true }
+    // TODO incorporate query-abouts
+    return pull(
+      this.query([
+        { $filter: { value: { type: 'addFile' } } },
+        {
+          $reduce: {
+            peerId: 'key',
+            numberFiles: { $count: true }
+          }
         }
-      }
-    ])
+        ]),
+      pull.map((peer) => {
+        peer.name = this.peerNames[peer.peerId]
+      })
+    )
   }
 
   myFiles () {
