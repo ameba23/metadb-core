@@ -5,7 +5,7 @@ const createDat = require('../create-dat')
 
 module.exports = function (metaDb) {
   return function (callback) {
-    const key = metaDb.key.toSring('hex')
+    const key = metaDb.key.toString('hex')
     // replies *FROM* me:
     pull(
       metaDb.query([{ $filter: { key }, value: { type: 'reply' } }]),
