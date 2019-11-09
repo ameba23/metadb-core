@@ -20,7 +20,7 @@ test('index a directory', t => {
             t.ok(files.length > 0, 'files exist')
             t.equal(files[0].sha256, 'c6f8621292d2b7f5c51827079a29bfe3fafa8b422719a27a18d3d2d7d722a256', 'donkey picture hashes match')
             t.equal(files[0].holders[0], metaDb.key.toString('hex'), 'holders has the correct key')
-            t.equal(Object.values(metaDb.shares)[0], pathToIndex, 'path to index stored')
+            t.equal(Object.values(metaDb.config.shares)[0], pathToIndex, 'path to index stored')
             t.end()
           })
         )
