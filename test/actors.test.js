@@ -29,6 +29,8 @@ test('publish an about message from 2 actors', t => {
           pull.collect((err, abouts) => {
             t.error(err, 'does not throw err')
             t.ok(abouts.length > 0, 'the about message exists')
+            const files = ['xvhiEpLSt/XFGCcHmim/4/r6i0InGaJ6GNPS19ciolY=.sha256']
+            metaDbs[0].publishRequest(files, [metaDbs[1].key.toString('hex')])
             metaDbs[0].readMessages(() => {
               console.log(metaDbs[0].peerNames)
               t.end()

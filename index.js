@@ -16,10 +16,13 @@ const Swarm = require('./swarm')
 const QueryFiles = require('./queries/query-files')
 const QueryAbouts = require('./queries/query-abouts')
 const RequestReply = require('./queries/request-reply')
+const { writeConfig, loadConfig } = require('./config')
 
 const LOCAL_FEED = 'local'
 const DB = (dir) => path.join(dir, 'db')
 const VIEWS = (dir) => path.join(dir, 'views')
+
+module.exports = (opts) => new MetaDb(opts)
 
 class MetaDb {
   constructor (opts = {}) {
@@ -90,7 +93,7 @@ class MetaDb {
             numberFiles: { $count: true }
           }
         }
-        ]),
+      ]),
       pull.map((peer) => {
         peer.name = this.peerNames[peer.peerId]
       })
@@ -150,7 +153,8 @@ class MetaDb {
     )
   }
 
+  writeConfig (cb) { return writeConfig(this)(cb) }
+  loadConfig (cb) { return loadConfig(this)(cb) }
+
   swarm (key) { return Swarm(this)(key) }
 }
-
-module.exports = (opts) => new MetaDb(opts)

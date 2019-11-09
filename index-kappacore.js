@@ -85,7 +85,8 @@ module.exports = function indexKappa (metadb) {
           log('Number of files parsed: ', chalk.green(datas.length))
           log('Number of metadata added: ', chalk.green(dataAdded))
           if (dataAdded > 0) {
-            metadb.shares[highestSeq] = dir
+             
+            metadb.config.shares[highestSeq] = dir
             // TODO save to config file
             log(`added shares sequence numbers ${chalk.green(lowestSeq)} to ${chalk.green(highestSeq)}`)
           }
