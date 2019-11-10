@@ -8,6 +8,8 @@ There is also a system of sending encrypted requests for particular files, and r
 
 metadb aims to be transport agnostic - the focus of the project is on providing a metadata index - actual transfer of the files can be done by whichever protocol you choose: IPFS, DAT, Bittorrent, SCP, etc. This implementation contains a way to serve files as DAT archives, but any information can be included in a response to a request for a file, making it easy to plug in different transport mechanisms.
 
+It also aims to be extendible - arbitrary data can be published about files, which might include comments, reviews, 'stars', or links to web resources such as wikipedia, discogs, imdb, etc.
+
 Based on an older unfinished python project, [meta-database](https://github.com/ameba23/meta-database)
 Could be used to build a distributed db of media file metadata. 
 
