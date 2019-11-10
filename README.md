@@ -51,7 +51,26 @@ options is an optional argument containing an object with options:
 
 ### `indexFiles(directory, callback)`
 
+Index a local directory. The directory will be scanned recursively and a message published for each media file, containing its metadata.
 - `directory` is a string with a path to some media files to be indexed.
+
+#### Example `addFile` message
+```
+{
+  type: 'addFile',
+  sha256: '843b5593e6e1f23daeefb66fa5e49ba7800f5a4b84c03c91fac7f18fb2a3663f',
+  filename: 'donkey.jpg',
+  size: 78394,
+  metadata: {
+    fileType: 'JPEG',
+    fileTypeExtension: 'jpg',
+    mimeType: 'image/jpeg',
+    imageWidth: 200,
+    imageHeight: 418 },
+  },
+  timestamp: 1573402125008
+}
+```
 
 ### `metaDb.buildIndexes(callback)`
 
@@ -64,7 +83,19 @@ Run a custom query
 
 ### `metaDb.publishAbout(name, callback)`
 
+Publish an 'about' message with a name or other information to identify yourself on the network.
 - `name` a string to identify yourself on the network (eg: 'alice')
+
+#### Example about message
+```
+{
+  type: 'about',
+  name: 'Hedwig',
+  version: '1.0.0',
+  timestamp: 1573402125008
+}
+```
+
 
 ### `metaDb.publishRequest(files, recipients, callback)`
 
@@ -72,15 +103,43 @@ Publish an encrypted request message to up to 7 other peers.
 - `files` is an array of strings which should be the hashes of the requested files
 - `recipients` is an array of 32 byte buffers which should be the public keys of peers to send the request to.
 
-### `metaDb.publishReply(key, recipient, callback)`
+#### Example request message
+```
+{
+  type: 'request',
+  files: ['843b5593e6e1f23daeefb66fa5e49ba7800f5a4b84c03c91fac7f18fb2a3663f'],
+  recipients: ['3c6c1fc2ac75cee8856df0c941cdcc0f0ae1337bcecaf6f89bd337ed1c2fecd7'],
+  version: '1.0.0',
+  timestamp: 1573402125008
+}
+```
 
-Publish a reply containing a dat link for the the requested files
-- `key` should be a string containing a dat link
+### `metaDb.publishReply(key, recipient, branch, callback)`
+
+Publish a reply containing a dat link for the requested files
+- `key` should be a string containing some kind of link to the file - which might be dat, IPFS, bittorent magnet or some other kind of link.
 - `recipient` should be 32 bytes buffer which should be the public key of a single recipient
+- `branch` should be string containing a reference to the `request` message of the format `feed@seq`.
+
+#### Example reply message
+```
+{
+  type: 'reply',
+  key: 'dat://fb17ae61d02cd97cb4a3f8b4ea6599afa152e361ff4aac6a27842effb2246126',
+  branch: '3c6c1fc2ac75cee8856df0c941cdcc0f0ae1337bcecaf6f89bd337ed1c2fecd7@5',
+  recipients: ['3c6c1fc2ac75cee8856df0c941cdcc0f0ae1337bcecaf6f89bd337ed1c2fecd7'],
+  version: '1.0.0'
+  timestamp:
+}
+```
 
 ### `metaDb.swarm(key)`
 
 - listen for peers on `key`, and replicate if you find any
+
+## Config file
+
+`~/.metadb/config.yml` contains information we don't want to store on the feed for privacy reasons. Currently it only contains the absolute paths of the files which are indexed.
 
 ## Issues
 
