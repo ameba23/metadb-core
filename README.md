@@ -151,6 +151,4 @@ Publish a reply containing a dat link for the requested files
 
 - handle query with no database
 - run with 'forever' for swarming?
-- yaml config file with shares
 - assert validation
-- serve a requested file, publish a private reply with the discovery key 
