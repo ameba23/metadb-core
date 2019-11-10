@@ -97,6 +97,7 @@ class MetaDb {
       ]),
       pull.map((peer) => {
         peer.name = this.peerNames[peer.peerId]
+        return peer
       })
     )
   }
