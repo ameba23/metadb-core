@@ -31,9 +31,10 @@ class MetaDb {
     mkdirp.sync(this.metaDbPath)
     this.asymmetric = new kappaPrivate.Asymmetric()
 
-    this.shares = {}
     this.peerNames = {}
     this.repliedTo = []
+    this.config = {}
+    this.config.shares = {}
 
     this.core = kappa(
       DB(this.metaDbPath),
@@ -50,7 +51,7 @@ class MetaDb {
         kappaPrivate.getSecretKey(DB(this.metaDbPath), this.key, (err, secretKey) => {
           if (err) return cb(err)
           this.asymmetric.secretKey = secretKey
-          cb()
+          this.loadConfig(cb)
         })
       })
     })

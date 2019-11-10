@@ -84,14 +84,13 @@ module.exports = function indexKappa (metadb) {
           log('Feed key ', chalk.green(metadb.localFeed.key.toString('hex')))
           log('Number of files parsed: ', chalk.green(datas.length))
           log('Number of metadata added: ', chalk.green(dataAdded))
-          if (dataAdded > 0) {
-             
-            metadb.config.shares[highestSeq] = dir
-            // TODO save to config file
+          if (dataAdded < 1) return callback()
+          metadb.loadConfig((err) => {
+            if (err) return callback(err)
+            metadb.config.shares[highestSeq] = path.resolve(dir)
             log(`added shares sequence numbers ${chalk.green(lowestSeq)} to ${chalk.green(highestSeq)}`)
-          }
-          // console.log('datas',JSON.stringify(datas, null,4))
-          callback()
+            metadb.writeConfig(callback)
+          })
         })
       )
     })

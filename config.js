@@ -12,8 +12,13 @@ function writeConfig (metadb) {
 
 function loadConfig (metadb) {
   return function (callback) {
-    fs.readFile(CONFIGFILE(metadb.metDbPath), 'utf8', (err, data) => {
-      if (err) return callback(err)
+    fs.readFile(CONFIGFILE(metadb.metaDbPath), 'utf8', (err, data) => {
+      if (err) {
+        // Dont complain if the file doesnt exist - assume no config set
+        return (err.code === 'ENOENT')
+          ? callback()
+          : callback(err)
+      }
       metadb.config = yaml.safeLoad(data)
       callback()
     })
