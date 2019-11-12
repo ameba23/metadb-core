@@ -124,9 +124,9 @@ class MetaDb {
         substrings.forEach(substring => {
           // search term beginning with ! filter results which do not contain the term
           if (substring[0] === '!') {
-            if (file.data.filename.toLowerCase().includes(substring.slice(1))) return 0
+            if (file.filename.toLowerCase().includes(substring.slice(1))) return 0
           } else {
-            if (file.data.filename.toLowerCase().includes(substring)) found++
+            if (file.filename.toLowerCase().includes(substring)) found++
           }
         })
         return found
@@ -134,14 +134,14 @@ class MetaDb {
     )
   }
 
-  byExtention (extentions) {
-    if (typeof extentions === 'string') extentions = [extentions]
-    extentions = extentions.map(e => e.toLowerCase())
+  byExtension (extensions) {
+    if (typeof extensions === 'string') extensions = [extensions]
+    extensions = extensions.map(e => e.toLowerCase())
     return pull(
       this.queryFiles(),
       pull.filter((file) => {
         // TODO lodash get
-        return extentions.indexOf(file.data.filename.split('.').pop().toLowerCase()) > -1
+        return extensions.indexOf(file.filename.split('.').pop().toLowerCase()) > -1
       })
     )
   }
