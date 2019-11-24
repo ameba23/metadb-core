@@ -153,11 +153,7 @@ class MetaDb {
   query (query, opts = {}) {
     if (!this.indexesReady) throw new Error('Indexes not ready, run buildIndexes')
     return pull(
-      this.core.api.query.read(Object.assign(opts, { live: false, reverse: true, query })),
-      pull.map(a => {
-        console.log(a)
-        return a
-      })
+      this.core.api.query.read(Object.assign(opts, { live: false, reverse: true, query }))
     )
   }
 
