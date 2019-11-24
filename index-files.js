@@ -106,16 +106,22 @@ module.exports = function indexKappa (metadb) {
               const dirHash = sha256(Buffer.from(directory.join(''), 'hex'))
               const newEntry = {
                 type: 'addDirectory',
-                sha256: dirHash,
+                sha256: dirHash.toString('hex'),
                 contents: directory
                 // size?
                 // name?
               }
               console.log(newEntry)
               // TODO: also need to check its not already published and add timestamp
-              cb(directory)
+              metadb.localFeed.append(newEntry, (err, seq) => {
+                if (err) throw err
+                log('Data was appended as entry #' + seq)
+                highestSeq = seq
+                dataAdded += 1
+                cb(null, newEntry)
+              })
             }),
-            pull.collect((err) => {
+            pull.collect((err, datas2) => {
               if (err) return callback(err)
 
               // TODO log feedname
