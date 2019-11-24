@@ -8,7 +8,7 @@ const queryMfr = require('./query-mfr')
 const pull = require('pull-stream')
 const os = require('os')
 
-const IndexFiles = require('./index-kappacore')
+const IndexFiles = require('./index-files')
 const PublishAbout = require('./publish-about')
 const PublishRequest = require('./publish-request')
 const PublishReply = require('./publish-reply')
@@ -148,10 +148,16 @@ class MetaDb {
 
   requestReply (...args) { return RequestReply(this)(...args) }
   queryAbouts (cb) { return QueryAbouts(this)(cb) }
+
+  // Generic query method
   query (query, opts = {}) {
     if (!this.indexesReady) throw new Error('Indexes not ready, run buildIndexes')
     return pull(
-      this.core.api.query.read(Object.assign(opts, { live: false, reverse: true, query }))
+      this.core.api.query.read(Object.assign(opts, { live: false, reverse: true, query })),
+      pull.map(a => {
+        console.log(a)
+        return a
+      })
     )
   }
 
