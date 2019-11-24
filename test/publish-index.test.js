@@ -19,7 +19,7 @@ test('index a directory', t => {
           pull.collect((err, files) => {
             t.error(err, 'does not throw err')
             t.ok(files.length > 0, 'files exist')
-            t.equal(files[0].sha256, donkeyHash, 'donkey picture hashes match')
+            t.true(files.find(f => f.sha256 === donkeyHash), 'donkey picture hash exists')
             t.equal(files[0].holders[0], metaDb.key.toString('hex'), 'holders has the correct key')
             t.equal(Object.values(metaDb.config.shares)[0], pathToIndex, 'path to index stored')
             t.end()
