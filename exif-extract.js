@@ -9,6 +9,13 @@ module.exports = function (data, callback) {
 }
 // TODO binary option -b extracts 'picture' or 'thumbnail'
 
+module.exports.isInstalled = function () {
+  try {
+    exif.metadata(Buffer.from(''), () => {})
+  } catch (err) { return false }
+  return true
+}
+
 function reduceMetadata (metadataObj) {
   const reducedMetadata = {}
   Object.keys(metadataObj).forEach(key => {
