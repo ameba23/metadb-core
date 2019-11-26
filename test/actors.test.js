@@ -7,7 +7,7 @@ const async = require('async')
 
 const names = ['alice', 'bob']
 
-test('publish an about message from 2 actors', t => {
+test('request and reply, 2 actors', t => {
   const metaDbs = []
   async.each(names, (name, callback) => {
     var metaDb = MetaDb({ path: tmpDir().name })

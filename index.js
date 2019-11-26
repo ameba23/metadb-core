@@ -7,6 +7,7 @@ const Query = require('kappa-view-pull-query')
 const queryMfr = require('./query-mfr')
 const pull = require('pull-stream')
 const os = require('os')
+// const thunky = require('thunky')
 
 const IndexFiles = require('./index-kappacore')
 const PublishAbout = require('./publish-about')
