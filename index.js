@@ -104,14 +104,16 @@ class MetaDb {
   }
 
   myFiles () {
+    function myFile (file) {
+      // TODO use lodash get
+      return file.holders
+        ? file.holders.indexOf(this.localFeed.key.toString('hex')) > -1
+        : false
+    }
+
     return pull(
       this.queryFiles(),
-      pull.filter((file) => {
-        // TODO use lodash get
-        return file.holders
-          ? file.holders.indexOf(this.localFeed.key.toString('hex')) > -1
-          : false
-      })
+      pull.filter(myFile)
     )
   }
 
