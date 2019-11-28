@@ -6,14 +6,23 @@ const glob = require('glob')
 const { sha256 } = require('./crypto')
 const { readableBytes } = require('./util')
 const exifExtract = require('./exif-extract')
+const mimeExtract = require('./mime-extract')
+const fileType = require('file-type')
 
 const ignore = require('./ignore.js')
 
 const log = console.log
 
+const defaultExtractors = [mimeExtract]
+
 module.exports = function indexKappa (metadb) {
-  return function (dir, callback) {
+  return function (dir, extractors, callback) {
     if (!metadb.localFeed) return callback(new Error('No local feed, call ready()'))
+    if (typeof extractors === 'function' && !callback) {
+      callback = extractors
+      extractors = null
+    }
+    extractors = extractors || defaultExtractors
     ignore.setup(() => {
       var highestSeq
       var dataAdded = 0
@@ -42,8 +51,8 @@ module.exports = function indexKappa (metadb) {
               log(
                 `Extracting metadata from file: ${chalk.green(file)} of length ${chalk.green(readableBytes(size))} ${chalk.blue(hash)}`
               )
-              exifExtract(data, (err, metadata) => {
-                if (err) return cb(err)
+              extract(data, (err, metadata) => {
+                if (err) return cb(err) // or just carry on?
 
                 var newEntry = {
                   type: 'addFile',
@@ -99,5 +108,27 @@ module.exports = function indexKappa (metadb) {
         )
       })
     })
+    function extract (data, callback) { // ext
+      const mimeType = getMimeType(data)
+      const metadata = { mimeType }
+      pull(
+        pull.values(extractors),
+        pull.asyncMap((extractor, cb) => {
+          extractor(data, mimeType, cb)
+        }),
+        pull.collect((err, metadatas) => {
+          if (err) return callback(err)
+          Object.assign(metadata, ...metadatas)
+          callback(null, metadata)
+        })
+      )
+    }
+
+    function getMimeType (data) {
+      // TODO: file-type can also take a stream
+      return (data.length >= fileType.minimumbytes)
+        ? fileType(data).mime
+        : undefined
+    }
   }
 }
