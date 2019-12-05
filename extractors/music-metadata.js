@@ -4,7 +4,7 @@ const mm = require('music-metadata')
 
 // TODO: can add 'duration:true' but calculating it is expensive (whole file must be parsed)
 // skipCovers: true stops covers being extracted
-module.exports = function (data, mimetype, callback) {
+module.exports = function (data, { mimetype }, callback) {
   mm.parseBuffer(data, mimetype, {})
     .then((metadata) => {
       // console.log(util.inspect(metadata, { showHidden: false, depth: null }));
