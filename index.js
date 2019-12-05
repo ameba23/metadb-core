@@ -7,6 +7,7 @@ const Query = require('kappa-view-pull-query')
 const queryMfr = require('./query-mfr')
 const pull = require('pull-stream')
 const os = require('os')
+// const thunky = require('thunky')
 
 const IndexFiles = require('./index-kappacore')
 const PublishAbout = require('./publish-about')
@@ -103,14 +104,16 @@ class MetaDb {
   }
 
   myFiles () {
+    function myFile (file) {
+      // TODO use lodash get
+      return file.holders
+        ? file.holders.indexOf(this.localFeed.key.toString('hex')) > -1
+        : false
+    }
+
     return pull(
       this.queryFiles(),
-      pull.filter((file) => {
-        // TODO use lodash get
-        return file.holders
-          ? file.holders.indexOf(this.localFeed.key.toString('hex')) > -1
-          : false
-      })
+      pull.filter(myFile)
     )
   }
 
