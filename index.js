@@ -117,9 +117,8 @@ class MetaDb {
     )
   }
 
-  filenameSubstring (substrings) {
-    if (typeof substrings === 'string') substrings = [substrings]
-    substrings = substrings.map(s => s.toLowerCase())
+  filenameSubstring (searchterm) {
+    const substrings = searchterm.split(' ').map(s => s.toLowerCase())
     return pull(
       this.queryFiles(),
       pull.filter((file) => {
@@ -132,6 +131,7 @@ class MetaDb {
             if (file.filename.toLowerCase().includes(substring)) found++
           }
         })
+        // TODO: sort them by 'found'
         return found
       })
     )
