@@ -3,17 +3,16 @@ const pull = require('pull-stream')
 const chalk = require('chalk')
 const path = require('path')
 const glob = require('glob')
-const { sha256 } = require('./crypto')
-const { readableBytes } = require('./util')
-const exifExtract = require('./exif-extract')
-const mimeExtract = require('./mime-extract')
 const fileType = require('file-type')
 
 const ignore = require('./ignore.js')
+const { sha256 } = require('./crypto')
+const { readableBytes } = require('./util')
 
 const log = console.log
-
-const defaultExtractors = [mimeExtract]
+const extractorsPath = './extractors/'
+const defaultExtractors = ['exif-tool'] // TODO put this somewhere else
+const defaultExtractorFns = defaultExtractors.map(filename => require(extractorsPath + filename))
 
 module.exports = function indexKappa (metadb) {
   return function (dir, extractors, callback) {
@@ -22,14 +21,12 @@ module.exports = function indexKappa (metadb) {
       callback = extractors
       extractors = null
     }
-    extractors = extractors || defaultExtractors
+    extractors = extractors || defaultExtractorFns
     ignore.setup(() => {
       var highestSeq
       var dataAdded = 0
       const lowestSeq = metadb.localFeed.length
-      // log('lowest seq = ', metadb.localFeed.length)
       log('Scanning directory ', dir, '...')
-      // TODO write full directory path to config
       glob('**/*', { cwd: dir, nodir: true }, (err, files) => {
         if (err) return callback(err)
         pull(
@@ -49,9 +46,9 @@ module.exports = function indexKappa (metadb) {
               // const hash = sha256(data).toString('base64') + '.sha256'
               const hash = sha256(data).toString('hex')
               log(
-                `Extracting metadata from file: ${chalk.green(file)} of length ${chalk.green(readableBytes(size))} ${chalk.blue(hash)}`
+                `Extracting metadata from: ${chalk.green(file)} length: ${chalk.green(readableBytes(size))} ${chalk.blue(hash.slice(-8))}`
               )
-              extract(data, (err, metadata) => {
+              extract(data, file, (err, metadata) => {
                 if (err) return cb(err) // or just carry on?
 
                 var newEntry = {
@@ -108,16 +105,19 @@ module.exports = function indexKappa (metadb) {
         )
       })
     })
-    function extract (data, callback) { // ext
-      const mimeType = getMimeType(data)
-      const metadata = { mimeType }
+    function extract (data, filepath, callback) { // ext
+      const metadata = {
+        mimeType: getMimeType(data),
+        extension: path.extname(filepath)
+      }
       pull(
         pull.values(extractors),
         pull.asyncMap((extractor, cb) => {
-          extractor(data, mimeType, cb)
+          extractor(data, metadata, cb)
         }),
+        // should this be a reducer?
         pull.collect((err, metadatas) => {
-          if (err) return callback(err)
+          if (err) return callback(err) // TODO: or ingore?
           Object.assign(metadata, ...metadatas)
           callback(null, metadata)
         })
