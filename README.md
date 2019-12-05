@@ -13,19 +13,22 @@ It also aims to be extendible - arbitrary data can be published about files, whi
 Based on an older unfinished python project, [meta-database](https://github.com/ameba23/meta-database)
 Could be used to build a distributed db of media file metadata. 
 
-- uses [kappa-core](https://github.com/kappa-db/kappa-core)
-- uses [kappa-view-pull-query](https://www.npmjs.com/package/kappa-view-pull-query) to do map-view-reduce queries of the kappa-core feeds to [pull-streams](https://pull-stream.github.io/)
-- uses [kappa-private](https://ledger-git.dyne.org/CoBox/kappa-private) for encrypted messages between peers
-- uses [Exiftool](https://www.sno.phy.queensu.ca/~phil/exiftool/) to pull metadata from a given directory of files.  But metadata extraction is pluggable - it is easy to add additional tools to, for example, pull sample text out of pdfs.
-- `exif-keys.json` specifies a list of attributes from exiftool that we would like to index
-- replicate with the database of others to produce a collective database of file metadata - using either `hyperswarm` or `discovery-swarm` for peer discovery.
-- private and public groups possible.
+- Built on [kappa-core](https://github.com/kappa-db/kappa-core)
+- Uses [kappa-view-pull-query](https://www.npmjs.com/package/kappa-view-pull-query) to do map-view-reduce queries of the kappa-core feeds to [pull-streams](https://pull-stream.github.io/)
+- Uses [kappa-private](https://ledger-git.dyne.org/CoBox/kappa-private) for encrypted messages between peers
+- Replicate with the database of others to produce a collective database of file metadata - using either `hyperswarm` or `discovery-swarm` for peer discovery.
+- Private and public groups possible.
+- Pluggable metadata extractors. Included are:
+  - [Exiftool](https://www.sno.phy.queensu.ca/~phil/exiftool/) - built for images but extracts data from a wide variety of other types of files.  Requires the script to be installed externally.  `exif-keys.json` specifies a list of attributes from exiftool that we would like to index.
+  - [music-metadata](https://github.com/borewit/music-metadata)
+  - `pdf-text` which extracts text from PDFs using [pdf2json](https://github.com/modesty/pdf2json)
+  - [image-size](https://github.com/image-size/image-size)
 
-## Dependencies
+## External Dependencies
 
-- [Exiftool](https://www.sno.phy.queensu.ca/~phil/exiftool/) must be installed
+For the exiftool extractor to work, [Exiftool](https://www.sno.phy.queensu.ca/~phil/exiftool/) must be installed
 
-## Additional modules
+## Complementary modules
 
 - [metadb-http-api](https://github.com/ameba23/metadb-http-api) - http interface
 - [metadb-ui](https://github.com/ameba23/metadb-ui) beginnings of a web front end using [choo](https://choo.io/) - help welcome
@@ -98,7 +101,6 @@ Publish an 'about' message with a name or other information to identify yourself
 }
 ```
 
-
 ### `metaDb.publishRequest(files, recipients, callback)`
 
 Publish an encrypted request message to up to 7 other peers. 
@@ -142,10 +144,6 @@ Publish a reply containing a dat link for the requested files
 ## Config file
 
 `~/.metadb/config.yml` contains information we don't want to store on the feed for privacy reasons. Currently it only contains the absolute paths of the files which are indexed.
-
-## Issues
-
-- exiftool started as a child process.  A native library would be better
 
 ## TODO
 
