@@ -11,7 +11,7 @@ const { readableBytes } = require('./util')
 
 const log = console.log
 const extractorsPath = './extractors/'
-const defaultExtractors = ['exif-tool'] // TODO put this somewhere else
+const defaultExtractors = [] // TODO put this somewhere else
 const defaultExtractorFns = defaultExtractors.map(filename => require(extractorsPath + filename))
 
 module.exports = function indexKappa (metadb) {

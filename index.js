@@ -9,7 +9,7 @@ const pull = require('pull-stream')
 const os = require('os')
 // const thunky = require('thunky')
 
-const IndexFiles = require('./index-kappacore')
+const IndexFiles = require('./index-files')
 const PublishAbout = require('./publish-about')
 const PublishRequest = require('./publish-request')
 const PublishReply = require('./publish-reply')
@@ -104,10 +104,11 @@ class MetaDb {
   }
 
   myFiles () {
+    var self = this
     function myFile (file) {
       // TODO use lodash get
       return file.holders
-        ? file.holders.indexOf(this.localFeed.key.toString('hex')) > -1
+        ? file.holders.indexOf(self.localFeed.key.toString('hex')) > -1
         : false
     }
 
