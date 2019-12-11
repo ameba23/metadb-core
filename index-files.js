@@ -11,7 +11,7 @@ const { readableBytes } = require('./util')
 
 const log = console.log
 const extractorsPath = './extractors/'
-const defaultExtractors = [] // TODO put this somewhere else
+const defaultExtractors = ['music-metadata'] // TODO put this somewhere else
 const defaultExtractorFns = defaultExtractors.map(filename => require(extractorsPath + filename))
 
 module.exports = function indexKappa (metadb) {
@@ -113,7 +113,9 @@ module.exports = function indexKappa (metadb) {
       pull(
         pull.values(extractors),
         pull.asyncMap((extractor, cb) => {
-          extractor(data, metadata, cb)
+          try {
+            extractor(data, metadata, cb)
+          } catch (err) { cb() } // ignore errors and keep going
         }),
         // should this be a reducer?
         pull.collect((err, metadatas) => {
