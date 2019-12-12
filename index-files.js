@@ -110,13 +110,20 @@ module.exports = function indexKappa (metadb) {
         mimeType: getMimeType(data),
         extension: path.extname(filepath)
       }
+      console.log(metadata.mimeType)
       pull(
         pull.values(extractors),
         pull.asyncMap((extractor, cb) => {
           try {
             extractor(data, metadata, cb)
-          } catch (err) { cb() } // ignore errors and keep going
+          } catch (err) {
+            log(err)
+            cb()
+          } // ignore errors and keep going
         }),
+        // pull.filter(Boolean),
+        pull.filter(t => !!t),
+        pull.map(sanitise),
         // should this be a reducer?
         pull.collect((err, metadatas) => {
           if (err) return callback(err) // TODO: or ingore?
@@ -128,9 +135,21 @@ module.exports = function indexKappa (metadb) {
 
     function getMimeType (data) {
       // TODO: file-type can also take a stream
+      if (data.length >= fileType.minimumbytes) console.log(fileType(data).mime)
       return (data.length >= fileType.minimumbytes)
         ? fileType(data).mime
         : undefined
+    }
+
+    function sanitise (metadata) {
+      if (metadata && typeof metadata === 'object') {
+        Object.keys(metadata).forEach((key) => {
+          const value = metadata[key]
+          if (typeof value === 'object') return sanitise(value)
+          if (Buffer.isBuffer(value)) delete metadata[key]
+        })
+      } else { console.log(metadata) }
+      return metadata
     }
   }
 }
