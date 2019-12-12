@@ -56,7 +56,7 @@ const isReply = validator({
     type: type('reply'),
     version,
     timestamp,
-    key: {
+    link: {
       required: true,
       type: 'string'
       // TODO: regex

@@ -5,12 +5,13 @@ const tmpDir = require('tmp').dirSync
 const { isRequest } = require('../schemas')
 
 const files = ['xvhiEpLSt/XFGCcHmim/4/r6i0InGaJ6GNPS19ciolY=.sha256']
-const recipients = []
 
 test('publish a request message', t => {
   var metaDb = MetaDb({ path: tmpDir().name })
   metaDb.ready(() => {
-    metaDb.publishRequest(files, recipients, (err, seq) => {
+    // TODO add a file to the db with the requested hash, so we have a recp
+    // otherwise this will fail
+    metaDb.publishRequest(files, (err, seq) => {
       t.notOk(err, 'does not throw err')
       metaDb.buildIndexes(() => {
         pull(

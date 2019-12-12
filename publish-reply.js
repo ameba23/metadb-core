@@ -1,24 +1,26 @@
+const assert = require('assert')
+const { isHexString, isBranchRef } = require('./util')
+const FEED_KEY_LENGTH = 32
 
-module.exports = function (metaDb) {
-  return function publishReply (key, recipient, branch, callback) {
-    if (!metaDb.localFeed) return callback(new Error('No local feed'))
-    // TODO: use assert to validate
+module.exports = function (metadb) {
+  return function publishReply (link, recipient, branch, callback) {
+    try {
+      assert(metadb.localFeed, 'No local feed')
+      assert(isHexString(recipient, FEED_KEY_LENGTH), 'Recipient key must be 32 byte hex encoded string')
+      assert(isBranchRef(branch), 'branch must be a reference to a message')
+    } catch (err) { return callback(err) }
     // TODO: check if feed.key is already there
     // TODO: check if recipients are already strings
-    if (Buffer.isBuffer(key)) key = key.toString('hex')
-    const recipients = [recipient, metaDb.localFeed.key].map(r => r.toString('hex'))
+    // if (Buffer.isBuffer(link)) link = link.toString('hex')
+    const recipients = [recipient, metadb.localFeed.key].map(r => r.toString('hex'))
     var msg = {
       type: 'reply',
       version: '1.0.0',
-      key, // || 'file not available'
+      link, // || 'file not available'
       branch,
       timestamp: Date.now(),
       recipients
     }
-    metaDb.localFeed.append(msg, callback)
+    metadb.localFeed.append(msg, callback)
   }
-}
-
-function assert (condition, message, callback) {
-  if (!condition) return callback(new Error('message'))
 }

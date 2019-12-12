@@ -78,9 +78,16 @@ class MetaDb {
   indexFiles (dir, cb) { return IndexFiles(this)(dir, cb) }
 
   publishAbout (name, cb) { return PublishAbout(this)(name, cb) }
-
-  publishRequest (files, recipients, cb) { return PublishRequest(this)(files, recipients, cb) }
+  publishRequest (files, cb) { return PublishRequest(this)(files, cb) }
   publishReply (...args) { return PublishReply(this)(...args) }
+
+  shares () {
+    // TODO: this should map shares to files somehow for displaying in the interface
+    // Object.keys(this.config.shares).forEach(n, i) {
+    //   
+    //   }
+    // )
+  }
 
   queryFiles () { return QueryFiles(this)() }
 
@@ -103,12 +110,15 @@ class MetaDb {
     )
   }
 
-  myFiles () {
+  myFiles () { return this.filesByPeer(this.localFeed.key) }
+
+  filesByPeer (peerKey) {
+    // TODO this is a bad query, not very efficient
     var self = this
     function myFile (file) {
       // TODO use lodash get
       return file.holders
-        ? file.holders.indexOf(self.localFeed.key.toString('hex')) > -1
+        ? file.holders.indexOf(peerKey.toString('hex')) > -1
         : false
     }
 
@@ -138,6 +148,13 @@ class MetaDb {
     )
   }
 
+  subdir (subdir) {
+    return pull(
+      this.queryFiles(),
+      pull.filter((file) => file.filename.slice(0, subdir.length) === subdir)
+    )
+  }
+
   byExtension (extensions) {
     if (typeof extensions === 'string') extensions = [extensions]
     extensions = extensions.map(e => e.toLowerCase())
@@ -163,4 +180,20 @@ class MetaDb {
   loadConfig (cb) { return loadConfig(this)(cb) }
 
   swarm (key) { return Swarm(this)(key) }
+  // swarm (opts = {}) {
+  //   this._connection = swarm(this, Object.assign(opts, {
+  //     logger: this.config.logger
+  //   }))
+  //   this._isSwarming = true
+  //   return true
+  // }
+  //
+  // unswarm () {
+  //   assert(this._isSwarming, 'already swarming')
+  //   this._connection.leave(this.discoveryKey)
+  //   this._connection.destroy()
+  //   this._connection = null
+  //   this._isSwarming = false
+  //   return true
+  // }
 }

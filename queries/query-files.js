@@ -1,20 +1,19 @@
 const merge = require('deepmerge')
 const pull = require('pull-stream')
 
-const queryFiles = [
-  { $filter: { value: { type: 'addFile' } } },
-  {
-    $reduce: {
-      sha256: ['value', 'sha256'],
-      data: { $collect: 'value' },
-      holders: { $collect: 'key' }
-    }
-  }
-]
-
 // console.log(core.api.query.explain({ live: false, reverse: true, query }))
 module.exports = function (metaDb) {
   return function () { // opts?
+    const queryFiles = [
+      { $filter: { value: { type: 'addFile' } } },
+      {
+        $reduce: {
+          sha256: ['value', 'sha256'],
+          data: { $collect: 'value' },
+          holders: { $collect: 'key' }
+        }
+      }
+    ]
     return pull(
       metaDb.query(queryFiles),
       pull.map(entry => {
