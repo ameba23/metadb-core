@@ -36,6 +36,7 @@ class MetaDb {
     this.repliedTo = []
     this.config = {}
     this.config.shares = {}
+    this.connections = {}
 
     this.core = kappa(
       DB(this.metaDbPath),
@@ -68,10 +69,17 @@ class MetaDb {
     })
   }
 
-  readMessages (cb) {
+  // readMessages (cb) {
+  getSettings (cb) {
     if (!this.indexesReady) this.buildIndexes(this.readMessages(cb))
     this.queryAbouts(() => {
-      this.requestReply(cb)
+      // this.requestReply(cb)
+      cb(null, {
+        key: this.key,
+        peerNames: this.peerNames,
+        connections: Object.keys(this.connections),
+        config: this.config
+      })
     })
   }
 
@@ -179,21 +187,6 @@ class MetaDb {
   writeConfig (cb) { return writeConfig(this)(cb) }
   loadConfig (cb) { return loadConfig(this)(cb) }
 
-  swarm (key) { return Swarm(this)(key) }
-  // swarm (opts = {}) {
-  //   this._connection = swarm(this, Object.assign(opts, {
-  //     logger: this.config.logger
-  //   }))
-  //   this._isSwarming = true
-  //   return true
-  // }
-  //
-  // unswarm () {
-  //   assert(this._isSwarming, 'already swarming')
-  //   this._connection.leave(this.discoveryKey)
-  //   this._connection.destroy()
-  //   this._connection = null
-  //   this._isSwarming = false
-  //   return true
-  // }
+  swarm (key, cb) { return Swarm(this)(key, cb) }
+  unswarm (key, cb) { return Swarm.unswarm(this)(key, cb) }
 }

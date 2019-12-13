@@ -111,6 +111,22 @@ function processCommand () {
         })
       })
     })
+
+    .command('subdir', 'list files in a given subdir', (yargs) => {
+      yargs
+        .option('subdir', {
+          describe: 'the subdirectory',
+          demandOption: true,
+          type: 'string'
+        })
+    }, (argv) => {
+      metadb.ready(() => {
+        metadb.buildIndexes(() => {
+          pullback(metadb.subdir(argv.subdir))
+        })
+      })
+    })
+
     .command('query-peers', 'list known peers', (yargs) => {
       yargs.option('opts', { demandOption: false })
     }, (argv) => {

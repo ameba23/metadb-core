@@ -9,21 +9,19 @@ const log = console.log
 
 const CONTEXT = 'metadb'
 const DEFAULT_TOPIC = 'mouse-p2p-app' // temp TODO
+const HASH_LENGTH = 32 // TODO
 
 // TODO switch to hyperswarm
 
 module.exports = function (metadb) {
-  return function swarm (key) {
-    //  key can be a string, which is hashed together with a unique string for
-    // the app, and the hash used (to avoid bumping into people)
-    key = key || DEFAULT_TOPIC
-    if (typeof key === 'string') {
-      key = (isHexString(key) && key.length === 64)
-        ? Buffer.from(key, 'hex')
-        : keyedHash(key, CONTEXT)
-    }
-    assert(Buffer.isBuffer(key), 'Badly formatted key')
+  return function swarm (key, cb) {
+    metadb.connections[key] = _swarm(key)
+    console.log(Object.keys(metadb.connections))
+    if (cb) cb(null, Object.keys(metadb.connections))
+  }
 
+  function _swarm (key) {
+    key = keyToTopic(key)
     // add id property with local key?  (cabal does this)
     var swarm = discovery(config())
 
@@ -36,4 +34,29 @@ module.exports = function (metadb) {
     })
     return swarm
   }
+}
+
+module.exports.unswarm = function (metadb) {
+  return function unswarm (key, cb) {
+    console.log(key)
+    if (metadb.connections[key]) {
+      this.connections[key].leave(keyToTopic(key))
+      this.connections[key].destroy()
+      this.connections[key] = null
+    }
+    if (cb) cb(null, Object.keys(metadb.connections))
+  }
+}
+
+function keyToTopic (key) {
+  //  key can be a string, which is hashed together with a unique string for
+  // the app, and the hash used (to avoid bumping into people)
+  key = key || DEFAULT_TOPIC
+  if (typeof key === 'string') {
+    key = (isHexString(key) && key.length === HASH_LENGTH * 2)
+      ? Buffer.from(key, 'hex')
+      : keyedHash(key, CONTEXT)
+  }
+  assert(Buffer.isBuffer(key), 'Badly formatted key')
+  return key
 }

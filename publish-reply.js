@@ -9,10 +9,7 @@ module.exports = function (metadb) {
       assert(isHexString(recipient, FEED_KEY_LENGTH), 'Recipient key must be 32 byte hex encoded string')
       assert(isBranchRef(branch), 'branch must be a reference to a message')
     } catch (err) { return callback(err) }
-    // TODO: check if feed.key is already there
-    // TODO: check if recipients are already strings
-    // if (Buffer.isBuffer(link)) link = link.toString('hex')
-    const recipients = [recipient, metadb.localFeed.key].map(r => r.toString('hex'))
+    const recipients = [recipient, metadb.key].map(r => r.toString('hex'))
     var msg = {
       type: 'reply',
       version: '1.0.0',

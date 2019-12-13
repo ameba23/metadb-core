@@ -35,10 +35,10 @@ module.exports = function (metaDb) {
           // reply should contain an error message
 
         }
-        createDat(filePaths, (err, datKey) => {
+        createDat(filePaths, (err, datLink) => {
           if (err) return callback(err)
           const branch = `${request.key}@${request.seq}`
-          metaDb.publishReply(key, request.key, branch, (err, seq) => {
+          metaDb.publishReply(datLink, request.key, branch, (err, seq) => {
             if (err) callback(err) // new error 'problem publishing?'
             metaDb.repliedTo.push(branch)
             callback()
