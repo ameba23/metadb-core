@@ -4,13 +4,13 @@ const path = require('path')
 
 const CONFIGFILE = (dir) => path.join(dir, 'config.yml')
 
-function writeConfig (metadb) {
+function save (metadb) {
   return function (callback) {
     fs.writeFile(CONFIGFILE(metadb.metaDbPath), yaml.safeDump(metadb.config, { sortKeys: true }), callback)
   }
 }
 
-function loadConfig (metadb) {
+function load (metadb) {
   return function (callback) {
     fs.readFile(CONFIGFILE(metadb.metaDbPath), 'utf8', (err, data) => {
       if (err) {
@@ -25,4 +25,4 @@ function loadConfig (metadb) {
   }
 }
 
-module.exports = { writeConfig, loadConfig }
+module.exports = { save, load }

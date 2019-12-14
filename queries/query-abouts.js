@@ -4,7 +4,7 @@ const { isAbout } = require('../schemas')
 module.exports = function (metaDb) {
   return function (callback) { // opts?
     pull(
-      metaDb.query([{ $filter: { value: { type: 'about' } } }]),
+      metaDb.query.custom([{ $filter: { value: { type: 'about' } } }]),
       pull.filter(msg => isAbout(msg.value)),
       pull.drain((about) => {
         // TODO compare timestamps?

@@ -11,7 +11,7 @@ const log = console.log
 
 function callback (err, res) {
   if (err) throw err
-  if (res) log(JSON.stringify(res, null, 4))
+  if (res) console.log(JSON.stringify(res, null, 4))
 }
 
 function pullback (stream) {
@@ -57,7 +57,7 @@ function processCommand () {
     }, (argv) => {
       metadb.ready(() => {
         metadb.buildIndexes(() => {
-          pullback(metadb.query(argv.query))
+          pullback(metadb.query.custom(argv.query))
         })
       })
     })
@@ -67,7 +67,7 @@ function processCommand () {
     }, (argv) => {
       metadb.ready(() => {
         metadb.buildIndexes(() => {
-          pullback(metadb.queryFiles())
+          pullback(metadb.query.files())
         })
       })
     })
@@ -76,7 +76,7 @@ function processCommand () {
     }, (argv) => {
       metadb.ready(() => {
         metadb.buildIndexes(() => {
-          pullback(metadb.myFiles())
+          pullback(metadb.query.ownFiles())
         })
       })
     })
@@ -91,7 +91,7 @@ function processCommand () {
     }, (argv) => {
       metadb.ready(() => {
         metadb.buildIndexes(() => {
-          pullback(metadb.byExtention(argv.extention))
+          pullback(metadb.query.byExtention(argv.extention))
         })
       })
     })
@@ -107,7 +107,7 @@ function processCommand () {
     }, (argv) => {
       metadb.ready(() => {
         metadb.buildIndexes(() => {
-          pullback(metadb.filenameSubstring(argv.substring))
+          pullback(metadb.query.filenameSubstring(argv.substring))
         })
       })
     })
@@ -122,7 +122,7 @@ function processCommand () {
     }, (argv) => {
       metadb.ready(() => {
         metadb.buildIndexes(() => {
-          pullback(metadb.subdir(argv.subdir))
+          pullback(metadb.query.subdir(argv.subdir))
         })
       })
     })
@@ -132,7 +132,7 @@ function processCommand () {
     }, (argv) => {
       metadb.ready(() => {
         metadb.buildIndexes(() => {
-          pullback(metadb.queryPeers())
+          pullback(metadb.query.peers())
         })
       })
     })
@@ -145,7 +145,18 @@ function processCommand () {
           type: 'string'
         })
     }, (argv) => {
-      metadb.swarm(argv.key)
+      metadb.swarm(argv.key, callback)
+    })
+
+    .command('disconnect', 'disconnect from other peers', (yargs) => {
+      yargs
+        .option('key', {
+          describe: 'swarm to leave',
+          demandOption: false,
+          type: 'string'
+        })
+    }, (argv) => {
+      metadb.unswarm(argv.key, callback)
     })
 
     .command('request', 'publish a request', (yargs) => {

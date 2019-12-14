@@ -15,6 +15,8 @@ const HASH_LENGTH = 32 // TODO
 
 module.exports = function (metadb) {
   return function swarm (key, cb) {
+    if (!key) return cb(null, new Error('No topic given'))
+    if (key === '') key = DEFAULT_TOPIC
     metadb.connections[key] = _swarm(key)
     console.log(Object.keys(metadb.connections))
     if (cb) cb(null, Object.keys(metadb.connections))
@@ -38,11 +40,12 @@ module.exports = function (metadb) {
 
 module.exports.unswarm = function (metadb) {
   return function unswarm (key, cb) {
-    console.log(key)
+    if (!key) return cb(null, new Error('No topic given'))
+    if (key === '') key = DEFAULT_TOPIC
     if (metadb.connections[key]) {
-      this.connections[key].leave(keyToTopic(key))
-      this.connections[key].destroy()
-      this.connections[key] = null
+      metadb.connections[key].leave(keyToTopic(key))
+      metadb.connections[key].destroy()
+      metadb.connections[key] = null
     }
     if (cb) cb(null, Object.keys(metadb.connections))
   }
@@ -51,7 +54,6 @@ module.exports.unswarm = function (metadb) {
 function keyToTopic (key) {
   //  key can be a string, which is hashed together with a unique string for
   // the app, and the hash used (to avoid bumping into people)
-  key = key || DEFAULT_TOPIC
   if (typeof key === 'string') {
     key = (isHexString(key) && key.length === HASH_LENGTH * 2)
       ? Buffer.from(key, 'hex')

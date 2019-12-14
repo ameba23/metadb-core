@@ -13,7 +13,7 @@ test('publish an about message', t => {
       t.error(err, 'does not throw err')
       metaDb.buildIndexes(() => {
         pull(
-          metaDb.query([{ $filter: { value: { type: 'about', name } } }]),
+          metaDb.query.custom([{ $filter: { value: { type: 'about', name } } }]),
           pull.filter(message => isAbout(message.value)),
           pull.collect((err, abouts) => {
             t.error(err, 'does not throw err')

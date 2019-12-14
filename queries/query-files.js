@@ -15,7 +15,7 @@ module.exports = function (metaDb) {
       }
     ]
     return pull(
-      metaDb.query(queryFiles),
+      metaDb.query.custom(queryFiles),
       pull.map(entry => {
         var mergeEntries = {}
         entry.data.forEach(thing => {

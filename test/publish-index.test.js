@@ -14,7 +14,7 @@ test('index a directory', t => {
       t.error(err, 'does not throw err')
       metaDb.buildIndexes(() => {
         pull(
-          metaDb.queryFiles(),
+          metaDb.query.files(),
           // pull.filter(message => isAbout(message.value)),
           pull.collect((err, files) => {
             t.error(err, 'does not throw err')

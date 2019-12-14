@@ -15,7 +15,7 @@ test('publish a reply message', t => {
       t.notOk(err, 'does not throw err')
       metaDb.buildIndexes(() => {
         pull(
-          metaDb.query([{ $filter: { value: { type: 'reply', link } } }]),
+          metaDb.query.custom([{ $filter: { value: { type: 'reply', link } } }]),
           pull.filter(message => isReply(message.value)),
           pull.collect((err, replies) => {
             // todo: isabout()

@@ -3,9 +3,8 @@ const path = require('path')
 const mkdirp = require('mkdirp')
 const kappaPrivate = require('kappa-private')
 const level = require('level')
-const Query = require('kappa-view-pull-query')
+const PullQuery = require('kappa-view-pull-query')
 const queryMfr = require('./query-mfr')
-const pull = require('pull-stream')
 const os = require('os')
 // const thunky = require('thunky')
 
@@ -14,10 +13,9 @@ const PublishAbout = require('./publish-about')
 const PublishRequest = require('./publish-request')
 const PublishReply = require('./publish-reply')
 const Swarm = require('./swarm')
-const QueryFiles = require('./queries/query-files')
-const QueryAbouts = require('./queries/query-abouts')
 const RequestReply = require('./queries/request-reply')
-const { writeConfig, loadConfig } = require('./config')
+const config = require('./config')
+const Query = require('./queries')
 
 const LOCAL_FEED = 'local'
 const DB = (dir) => path.join(dir, 'db')
@@ -37,6 +35,7 @@ class MetaDb {
     this.config = {}
     this.config.shares = {}
     this.connections = {}
+    this.query = Query(this)
 
     this.core = kappa(
       DB(this.metaDbPath),
@@ -61,7 +60,7 @@ class MetaDb {
 
   buildIndexes (cb) {
     this.db = level(VIEWS(this.metaDbPath))
-    this.core.use('query', Query(this.db, this.core, queryMfr))
+    this.core.use('query', PullQuery(this.db, this.core, queryMfr))
     this.core.ready(() => {
       // should we do if (this.key)
       this.indexesReady = true
@@ -71,8 +70,8 @@ class MetaDb {
 
   // readMessages (cb) {
   getSettings (cb) {
-    if (!this.indexesReady) this.buildIndexes(this.readMessages(cb))
-    this.queryAbouts(() => {
+    if (!this.indexesReady) this.buildIndexes(this.getSettings(cb))
+    this.query.abouts(() => {
       // this.requestReply(cb)
       cb(null, {
         key: this.key,
@@ -97,95 +96,12 @@ class MetaDb {
     // )
   }
 
-  queryFiles () { return QueryFiles(this)() }
-
-  queryPeers () {
-    // TODO incorporate query-abouts
-    return pull(
-      this.query([
-        { $filter: { value: { type: 'addFile' } } },
-        {
-          $reduce: {
-            peerId: 'key',
-            numberFiles: { $count: true }
-          }
-        }
-      ]),
-      pull.map((peer) => {
-        peer.name = this.peerNames[peer.peerId]
-        return peer
-      })
-    )
-  }
-
-  myFiles () { return this.filesByPeer(this.localFeed.key) }
-
-  filesByPeer (peerKey) {
-    // TODO this is a bad query, not very efficient
-    var self = this
-    function myFile (file) {
-      // TODO use lodash get
-      return file.holders
-        ? file.holders.indexOf(peerKey.toString('hex')) > -1
-        : false
-    }
-
-    return pull(
-      this.queryFiles(),
-      pull.filter(myFile)
-    )
-  }
-
-  filenameSubstring (searchterm) {
-    const substrings = searchterm.split(' ').map(s => s.toLowerCase())
-    return pull(
-      this.queryFiles(),
-      pull.filter((file) => {
-        var found = 0
-        substrings.forEach(substring => {
-          // search term beginning with ! filter results which do not contain the term
-          if (substring[0] === '!') {
-            if (file.filename.toLowerCase().includes(substring.slice(1))) return 0
-          } else {
-            if (file.filename.toLowerCase().includes(substring)) found++
-          }
-        })
-        // TODO: sort them by 'found'
-        return found
-      })
-    )
-  }
-
-  subdir (subdir) {
-    return pull(
-      this.queryFiles(),
-      pull.filter((file) => file.filename.slice(0, subdir.length) === subdir)
-    )
-  }
-
-  byExtension (extensions) {
-    if (typeof extensions === 'string') extensions = [extensions]
-    extensions = extensions.map(e => e.toLowerCase())
-    return pull(
-      this.queryFiles(),
-      pull.filter((file) => {
-        // TODO lodash get
-        return extensions.indexOf(file.filename.split('.').pop().toLowerCase()) > -1
-      })
-    )
-  }
+  // query (...args) { return Query(this)(...args) }
 
   requestReply (...args) { return RequestReply(this)(...args) }
-  queryAbouts (cb) { return QueryAbouts(this)(cb) }
-  query (query, opts = {}) {
-    if (!this.indexesReady) throw new Error('Indexes not ready, run buildIndexes')
-    return pull(
-      this.core.api.query.read(Object.assign(opts, { live: false, reverse: true, query }))
-    )
-  }
 
-  writeConfig (cb) { return writeConfig(this)(cb) }
-  loadConfig (cb) { return loadConfig(this)(cb) }
+  writeConfig (cb) { return config.save(this)(cb) }
+  loadConfig (cb) { return config.load(this)(cb) }
 
   swarm (key, cb) { return Swarm(this)(key, cb) }
   unswarm (key, cb) { return Swarm.unswarm(this)(key, cb) }

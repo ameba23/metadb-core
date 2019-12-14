@@ -8,7 +8,7 @@ module.exports = function (metaDb) {
     const key = metaDb.key.toString('hex')
     // replies *FROM* me:
     pull(
-      metaDb.query([{ $filter: { key }, value: { type: 'reply' } }]),
+      metaDb.query.custom([{ $filter: { key }, value: { type: 'reply' } }]),
       pull.filter(msg => isReply(msg.value)),
       pull.map(msg => msg.value.branch),
       pull.drain((reply) => {
@@ -19,7 +19,7 @@ module.exports = function (metaDb) {
     function checkRequests () {
       // requests *TO* me:
       pull(
-        metaDb.query([{ $filter: { key: { $ne: key }, value: { type: 'request' } } }]),
+        metaDb.query.custom([{ $filter: { key: { $ne: key }, value: { type: 'request' } } }]),
         pull.filter(msg => isRequest(msg.value)),
         pull.filter((request) => {
           const branchString = `${request.key}@${request.seq}`

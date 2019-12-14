@@ -15,7 +15,7 @@ test('publish a request message', t => {
       t.notOk(err, 'does not throw err')
       metaDb.buildIndexes(() => {
         pull(
-          metaDb.query([{ $filter: { value: { type: 'request', files } } }]),
+          metaDb.query.custom([{ $filter: { value: { type: 'request', files } } }]),
           pull.filter(message => isRequest(message.value)),
           pull.collect((err, requests) => {
             t.error(err, 'does not throw err')

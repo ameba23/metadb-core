@@ -24,16 +24,19 @@ test('request and reply, 2 actors', t => {
       t.error(err, 'No error on replicate')
       metaDbs[0].buildIndexes(() => {
         pull(
-          metaDbs[0].query([{ $filter: { value: { type: 'about' } } }]),
+          metaDbs[0].query.custom([{ $filter: { value: { type: 'about' } } }]),
           pull.filter(message => isAbout(message.value)),
           pull.collect((err, abouts) => {
             t.error(err, 'does not throw err')
             t.ok(abouts.length > 0, 'the about message exists')
             const files = ['xvhiEpLSt/XFGCcHmim/4/r6i0InGaJ6GNPS19ciolY=.sha256']
-            metaDbs[0].publishRequest(files, [metaDbs[1].key.toString('hex')])
-            metaDbs[0].readMessages(() => {
-              console.log(metaDbs[0].peerNames)
-              t.end()
+            // metaDbs[0].publishRequest(files, [metaDbs[1].key.toString('hex')])
+            metaDbs[0].publishRequest(files, () => {
+              // metaDbs[0].readMessages(() => {
+              metaDbs[0].requestReply(() => {
+                console.log(metaDbs[0].peerNames)
+                t.end()
+              })
             })
           })
         )
