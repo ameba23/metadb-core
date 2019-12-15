@@ -40,7 +40,7 @@ function processCommand () {
         })
     }, (argv) => {
       metadb.ready(() => {
-        metadb.publishAbout(argv.name, callback)
+        metadb.publish.about(argv.name, callback)
       })
     })
 
@@ -168,7 +168,7 @@ function processCommand () {
         })
     }, (argv) => {
       metadb.ready(() => {
-        metadb.publishRequest(argv.files, callback)
+        metadb.publish.request(argv.files, callback)
       })
     })
 

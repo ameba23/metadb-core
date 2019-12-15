@@ -1,5 +1,5 @@
 const assert = require('assert')
-const { isHexString, isBranchRef } = require('./util')
+const { isHexString, isBranchRef } = require('../util')
 const FEED_KEY_LENGTH = 32
 
 module.exports = function (metadb) {

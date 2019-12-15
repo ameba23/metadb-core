@@ -9,7 +9,7 @@ const name = 'alice'
 test('publish an about message', t => {
   var metaDb = MetaDb({ path: tmpDir().name })
   metaDb.ready(() => {
-    metaDb.publishAbout(name, (err, seq) => {
+    metaDb.publish.about(name, (err, seq) => {
       t.error(err, 'does not throw err')
       metaDb.buildIndexes(() => {
         pull(

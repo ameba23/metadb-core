@@ -1,6 +1,6 @@
 const pull = require('pull-stream')
 const assert = require('assert')
-const { uniq, isHexString } = require('./util')
+const { uniq, isHexString } = require('../util')
 const SHA256_BYTES = 32 // TODO
 
 module.exports = function (metadb) {

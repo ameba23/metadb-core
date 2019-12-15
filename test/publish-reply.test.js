@@ -11,7 +11,7 @@ const branch = recipient + '@5'
 test('publish a reply message', t => {
   var metaDb = MetaDb({ path: tmpDir().name })
   metaDb.ready(() => {
-    metaDb.publishReply(link, recipient, branch, (err, seq) => {
+    metaDb.publish.reply(link, recipient, branch, (err, seq) => {
       t.notOk(err, 'does not throw err')
       metaDb.buildIndexes(() => {
         pull(

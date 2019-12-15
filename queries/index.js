@@ -47,7 +47,7 @@ module.exports = function Query (metadb) {
     }
 
     return pull(
-      metadb.queryFiles(),
+      files(),
       pull.filter(myFile)
     )
   }

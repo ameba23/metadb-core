@@ -11,7 +11,7 @@ test('publish a request message', t => {
   metaDb.ready(() => {
     // TODO add a file to the db with the requested hash, so we have a recp
     // otherwise this will fail
-    metaDb.publishRequest(files, (err, seq) => {
+    metaDb.publish.request(files, (err, seq) => {
       t.notOk(err, 'does not throw err')
       metaDb.buildIndexes(() => {
         pull(

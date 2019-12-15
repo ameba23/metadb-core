@@ -12,7 +12,7 @@ test('request and reply, 2 actors', t => {
   async.each(names, (name, callback) => {
     var metaDb = MetaDb({ path: tmpDir().name })
     metaDb.ready(() => {
-      metaDb.publishAbout(name, (err, seq) => {
+      metaDb.publish.about(name, (err, seq) => {
         t.error(err, 'does not throw err')
         metaDbs.push(metaDb)
         callback()
@@ -30,8 +30,8 @@ test('request and reply, 2 actors', t => {
             t.error(err, 'does not throw err')
             t.ok(abouts.length > 0, 'the about message exists')
             const files = ['xvhiEpLSt/XFGCcHmim/4/r6i0InGaJ6GNPS19ciolY=.sha256']
-            // metaDbs[0].publishRequest(files, [metaDbs[1].key.toString('hex')])
-            metaDbs[0].publishRequest(files, () => {
+            // metaDbs[0].publish.request(files, [metaDbs[1].key.toString('hex')])
+            metaDbs[0].publish.request(files, () => {
               // metaDbs[0].readMessages(() => {
               metaDbs[0].requestReply(() => {
                 console.log(metaDbs[0].peerNames)
