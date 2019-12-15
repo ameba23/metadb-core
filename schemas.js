@@ -70,4 +70,22 @@ const isReply = validator({
   }
 })
 
-module.exports = { isAbout, isRequest, isReply }
+const isComment = validator({
+  $schema: 'http://json-schema.org/schema#',
+  type: 'object',
+  properties: {
+    type: type('file-comment'),
+    version,
+    timestamp,
+    sha256: {
+      required: true,
+      type: 'string'
+    },
+    comment: {
+      required: false,
+      type: 'string'
+    }
+  }
+})
+
+module.exports = { isAbout, isRequest, isReply, isComment }

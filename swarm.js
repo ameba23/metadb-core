@@ -45,8 +45,9 @@ module.exports.unswarm = function (metadb) {
     if (metadb.connections[key]) {
       metadb.connections[key].leave(keyToTopic(key))
       metadb.connections[key].destroy()
-      metadb.connections[key] = null
+      delete metadb.connections[key]
     }
+    console.log('unswarmed', Object.keys(metadb.connections))
     if (cb) cb(null, Object.keys(metadb.connections))
   }
 }

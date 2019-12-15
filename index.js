@@ -9,13 +9,11 @@ const os = require('os')
 // const thunky = require('thunky')
 
 const IndexFiles = require('./index-files')
-const PublishAbout = require('./publish-about')
-const PublishRequest = require('./publish-request')
-const PublishReply = require('./publish-reply')
 const Swarm = require('./swarm')
 const RequestReply = require('./queries/request-reply')
 const config = require('./config')
 const Query = require('./queries')
+const Publish = require('./publish')
 
 const LOCAL_FEED = 'local'
 const DB = (dir) => path.join(dir, 'db')
@@ -36,6 +34,7 @@ class MetaDb {
     this.config.shares = {}
     this.connections = {}
     this.query = Query(this)
+    this.publish = Publish(this)
 
     this.core = kappa(
       DB(this.metaDbPath),
@@ -84,9 +83,6 @@ class MetaDb {
 
   indexFiles (dir, cb) { return IndexFiles(this)(dir, cb) }
 
-  publishAbout (name, cb) { return PublishAbout(this)(name, cb) }
-  publishRequest (files, cb) { return PublishRequest(this)(files, cb) }
-  publishReply (...args) { return PublishReply(this)(...args) }
 
   shares () {
     // TODO: this should map shares to files somehow for displaying in the interface
@@ -95,8 +91,6 @@ class MetaDb {
     //   }
     // )
   }
-
-  // query (...args) { return Query(this)(...args) }
 
   requestReply (...args) { return RequestReply(this)(...args) }
 
