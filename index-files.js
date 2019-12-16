@@ -135,9 +135,12 @@ module.exports = function indexKappa (metadb) {
 
     function getMimeType (data) {
       // TODO: file-type can also take a stream
-      if (data.length >= fileType.minimumbytes) console.log(fileType(data).mime)
-      return (data.length >= fileType.minimumbytes)
-        ? fileType(data).mime
+      let ft
+      if (data.length >= fileType.minimumBytes) {
+        ft = fileType(data)
+      }
+      return ft
+        ? ft.mime
         : undefined
     }
 
