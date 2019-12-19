@@ -1,7 +1,7 @@
 const kappa = require('kappa-core')
 const path = require('path')
 const mkdirp = require('mkdirp')
-const kappaPrivate = require('kappa-private')
+const KappaPrivate = require('kappa-private')
 const level = require('level')
 const PullQuery = require('kappa-view-pull-query')
 const queryMfr = require('./query-mfr')
@@ -26,7 +26,7 @@ class MetaDb {
     this.indexesReady = false
     this.metaDbPath = opts.path || path.join(os.homedir(), '.metadb')
     mkdirp.sync(this.metaDbPath)
-    this.asymmetric = new kappaPrivate.Asymmetric()
+    this.kappaPrivate = KappaPrivate()
 
     this.peerNames = {}
     this.repliedTo = []
@@ -38,7 +38,7 @@ class MetaDb {
 
     this.core = kappa(
       DB(this.metaDbPath),
-      { valueEncoding: this.asymmetric.encoder() }
+      { valueEncoding: this.kappaPrivate.encoder() }
     )
   }
 
@@ -48,11 +48,8 @@ class MetaDb {
       feed.ready(() => {
         this.localFeed = feed
         this.key = feed.key
-        kappaPrivate.getSecretKey(DB(this.metaDbPath), this.key, (err, secretKey) => {
-          if (err) return cb(err)
-          this.asymmetric.secretKey = secretKey
-          this.loadConfig(cb)
-        })
+        this.kappaPrivate.secretKey = feed.secretKey
+        this.loadConfig(cb)
       })
     })
   }
