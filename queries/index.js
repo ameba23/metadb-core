@@ -5,7 +5,7 @@ const { isRequest, isReply } = require('../schemas')
 
 module.exports = function Query (metadb) {
   const custom = query
-  return { files, peers, abouts, ownFiles, filesByPeer, filenameSubstring, subdir, byExtension, custom }
+  return { files, peers, abouts, ownFiles, filesByPeer, filenameSubstring, subdir, byExtension, custom, byMimeCategory }
 
   function query (query, opts = {}) {
     if (!metadb.indexesReady) throw new Error('Indexes not ready, run buildIndexes')
@@ -89,6 +89,23 @@ module.exports = function Query (metadb) {
       pull.filter((file) => {
         // TODO lodash get
         return extensions.indexOf(file.filename.split('.').pop().toLowerCase()) > -1
+      })
+    )
+  }
+
+  function byMimeCategory (categories) {
+    if (typeof categories === 'string') categories = [categories]
+    return pull(
+      files(),
+      pull.filter((file) => {
+        if (file.metadata.mimeType) {
+          // TODO add special cases eg: application/pdf = document/book
+          const category = file.metadata.mimeType.split('/')[0]
+          return categories.includes(category)
+        } else {
+          // TODO determine filetype from extension
+          return false
+        }
       })
     )
   }
