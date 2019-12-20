@@ -80,11 +80,9 @@ class MetaDb {
 
   indexFiles (dir, cb) { return IndexFiles(this)(dir, cb) }
 
-
   shares () {
     // TODO: this should map shares to files somehow for displaying in the interface
     // Object.keys(this.config.shares).forEach(n, i) {
-    //   
     //   }
     // )
   }

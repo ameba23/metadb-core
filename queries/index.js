@@ -1,6 +1,7 @@
 const pull = require('pull-stream')
 const QueryFiles = require('./query-files')
 const QueryAbouts = require('./query-abouts')
+const { isRequest, isReply } = require('../schemas')
 
 module.exports = function Query (metadb) {
   const custom = query
@@ -75,7 +76,8 @@ module.exports = function Query (metadb) {
   function subdir (subdir) {
     return pull(
       files(),
-      pull.filter((file) => file.filename.slice(0, subdir.length) === subdir)
+      pull.filter((file) => file.filename.slice(0, subdir.length) === subdir),
+      pull.map((a) => { console.log(a); return a })
     )
   }
 
@@ -92,4 +94,34 @@ module.exports = function Query (metadb) {
   }
 
   function abouts (cb) { return QueryAbouts(metadb)(cb) }
+
+  function ownRequests () {
+    const key = metadb.key.toString('hex')
+    return pull(
+      // requests FROM me
+      metadb.query.custom([{ $filter: { key, value: { type: 'request' } } }]),
+      pull.filter(msg => isRequest(msg.value))
+    )
+  }
+
+  function ownRequestsPending () {
+    const key = metadb.key.toString('hex')
+    return pull(
+      ownRequests(),
+      pull.filter((request) => {
+        const branchString = `${request.key}@${request.seq}`
+        pull(
+          // Replies FROM others
+          metadb.query.custom([{ $filter: { key: { $ne: key }, value: { type: 'reply' } } }]),
+          pull.filter(msg => isReply(msg.value)),
+          pull.map(msg => msg.value.branch),
+          pull.filter(replyBranch => replyBranch === branchString),
+          pull.collect((err, replies) => {
+            if (err) throw err
+            return replies.length
+          })
+        )
+      })
+    )
+  }
 }
