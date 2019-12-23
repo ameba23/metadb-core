@@ -1,5 +1,5 @@
 const pull = require('pull-stream')
-const QueryFiles = require('./query-files')
+// const QueryFiles = require('./query-files')
 const QueryAbouts = require('./query-abouts')
 const { isRequest, isReply } = require('../schemas')
 
@@ -15,6 +15,7 @@ module.exports = function Query (metadb) {
   }
 
   function files () { return QueryFiles(metadb)() }
+  function files () { return metadb.core.api.files.pullStream() }
 
   function peers () {
     // TODO incorporate query-abouts

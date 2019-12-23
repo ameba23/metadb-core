@@ -2,11 +2,14 @@ const kappa = require('kappa-core')
 const path = require('path')
 const mkdirp = require('mkdirp')
 const KappaPrivate = require('kappa-private')
-const level = require('level')
-const PullQuery = require('kappa-view-pull-query')
-const queryMfr = require('./query-mfr')
+const level = require('level') // -mem ?
+const sublevel = require('subleveldown')
+// const PullQuery = require('kappa-view-pull-query')
+// const queryMfr = require('./query-mfr')
 const os = require('os')
 // const thunky = require('thunky')
+
+const createFilesView = require('./views/files')
 
 const IndexFiles = require('./index-files')
 const Swarm = require('./swarm')
@@ -18,6 +21,10 @@ const Publish = require('./publish')
 const LOCAL_FEED = 'local'
 const DB = (dir) => path.join(dir, 'db')
 const VIEWS = (dir) => path.join(dir, 'views')
+const FILESBYHASH = 'h'
+const FILESBYPATH = 'f'
+const PEERS = 'p'
+const REQUESTS = 'r'
 
 module.exports = (opts) => new MetaDb(opts)
 
@@ -56,9 +63,18 @@ class MetaDb {
 
   buildIndexes (cb) {
     this.db = level(VIEWS(this.metaDbPath))
-    this.core.use('query', PullQuery(this.db, this.core, queryMfr))
+    this.core.use('files', createFilesView(
+      sublevel(this.db, FILESBYHASH, { valueEncoding: json }),
+      sublevel(this.db, FILESBYPATH, { valueEncoding: json })
+    ))
+    this.core.use('peers', createFilesView(
+      sublevel(this.db, PEERS, { valueEncoding: json })
+    ))
+    // this.core.use('requests', createFilesView(
+    //   sublevel(this.db, REQUESTS, { valueEncoding: json })
+    // ))
     this.core.ready(() => {
-      // should we do if (this.key)
+      // should we do if (this.key) ?
       this.indexesReady = true
       cb()
     })
@@ -94,4 +110,16 @@ class MetaDb {
 
   swarm (key, cb) { return Swarm(this)(key, cb) }
   unswarm (key, cb) { return Swarm.unswarm(this)(key, cb) }
+}
+
+const json = {
+  encode: function (obj) {
+    return Buffer.from(JSON.stringify(obj))
+  },
+  decode: function (buf) {
+    var str = buf.toString('utf8')
+    try { var obj = JSON.parse(str) } catch (err) { return {} }
+    return obj
+  },
+  buffer: true
 }

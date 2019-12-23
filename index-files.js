@@ -8,11 +8,14 @@ const fileType = require('file-type')
 const ignore = require('./ignore.js')
 const { sha256 } = require('./crypto')
 const { readableBytes } = require('./util')
+const { isAddFile } = require('./schemas') // TODO
 
 const log = console.log
 const extractorsPath = './extractors/'
 const defaultExtractors = ['music-metadata'] // TODO put this somewhere else
 const defaultExtractorFns = defaultExtractors.map(filename => require(extractorsPath + filename))
+
+const SCHEMAVERSION = '1.0.0'
 
 module.exports = function indexKappa (metadb) {
   return function (dir, extractors, callback) {
@@ -55,6 +58,7 @@ module.exports = function indexKappa (metadb) {
                   type: 'addFile',
                   sha256: hash,
                   filename: file,
+                  version: SCHEMAVERSION,
                   size,
                   metadata
                 }
