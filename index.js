@@ -10,6 +10,7 @@ const os = require('os')
 // const thunky = require('thunky')
 
 const createFilesView = require('./views/files')
+const createPeersView = require('./views/peers')
 
 const IndexFiles = require('./index-files')
 const Swarm = require('./swarm')
@@ -64,10 +65,10 @@ class MetaDb {
   buildIndexes (cb) {
     this.db = level(VIEWS(this.metaDbPath))
     this.core.use('files', createFilesView(
-      sublevel(this.db, FILESBYHASH, { valueEncoding: json }),
-      sublevel(this.db, FILESBYPATH, { valueEncoding: json })
+      sublevel(this.db, FILESBYHASH, { valueEncoding: 'json' }),
+      sublevel(this.db, FILESBYPATH, { valueEncoding: 'json' })
     ))
-    this.core.use('peers', createFilesView(
+    this.core.use('peers', createPeersView(
       sublevel(this.db, PEERS, { valueEncoding: json })
     ))
     // this.core.use('requests', createFilesView(

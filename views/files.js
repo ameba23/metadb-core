@@ -6,7 +6,6 @@ const { isAddFile } = require('../schemas')
 
 module.exports = function (byHash, byPath) {
   const events = new EventEmitter()
-
   return {
     maxBatch: 100,
 
@@ -30,28 +29,26 @@ module.exports = function (byHash, byPath) {
 
           opsByHash.push({
             type: 'put',
-            key: msg.value.sha256, // or prefix with timestamp, to make them ordered
+            key: msg.value.sha256,
             value: merged
           })
 
-          byPath.get(msg.value.filename, (err, existingHashes) => {
-            const hashes = (err && err.notFound) ? [] : existingHashes
-            if (!hashes.includes(msg.value.sha256)) hashes.push(msg.value.sha256)
-            opsByPath.push({
-              type: 'put',
-              key: msg.value.filename + '!' + msg.value.timestamp,
-              value: hashes
-            })
-
-            if (!--pending) done()
+          opsByPath.push({
+            type: 'put',
+            key: msg.value.filename + '!' + msg.value.timestamp,
+            value: msg.value.sha256
           })
+
+          if (!--pending) done()
         })
       })
       if (!pending) done()
 
       function done () {
-        byHash.batch(opsByHash, next)
-        byPath.batch(opsByPath, next)
+        byHash.batch(opsByHash, (err) => {
+          if (err) return next(err)
+          byPath.batch(opsByPath, next)
+        })
       }
     },
 
@@ -64,35 +61,46 @@ module.exports = function (byHash, byPath) {
     },
 
     api: {
-      getbyHash: function (core, sha256, cb) {
-        // this.ready(() => {})
+      getByHash: function boop (core, sha256, cb) {
+        this.ready(() => {
         // TODO buffer to hex
-        byHash.get(sha256, cb)
+          byHash.get(sha256, cb)
+        })
       },
       pathToHash: (core, filePath, cb) => {
-        byPath.get(filePath, cb)
+        const res = []
+        const stream = byPath.createReadStream({
+          gt: filePath + '!!',
+          lt: filePath + '!~'
+        })
+        stream.on('data', function (row) {
+          if (row.key.split('!')[0] === filePath) res.push(row.value)
+        })
+        stream.once('end', () => cb(null, res))
+        stream.once('error', cb)
       },
       pullStream: () => {
         return pull(
-          pullLevel.read(byHash), // {live: true}
-          pull.map(kv => kv.value)
+          pullLevel.read(byHash, { keys: false }) // {live: true}
         )
       },
-      pullStreambyPath: () => {
+      pullStreamByPath: function (core, opts = {}) {
+        if (opts.subdir) {
+          opts = {
+            gte: opts.subdir,
+            lte: opts.subdir + '~'
+            // lte: String.fromCharCode(key.charCodeAt(0) + 1)
+          }
+        }
+        // this.ready(() => {
+        // return cb(null, pull(
         return pull(
-          pullLevel.read(byPath),
-          pull.asyncMap((hashes, cb) => {
-            pull(
-              pull.values(hashes),
-              pull.asyncMap((hash, cb2) => {
-                byHash.get(hash, cb2)
-              }),
-              pull.collect(cb)
-            )
-          }),
-          pull.flatten(),
-          pull.map(kv => kv.value)
+          pullLevel.read(byPath, Object.assign({ keys: false }, opts)),
+          pull.asyncMap((hash, cb) => {
+            core.api.files.getByHash(hash, cb)
+          })
         )
+        // })
       },
       events: events
     }
