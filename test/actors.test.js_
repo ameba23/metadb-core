@@ -1,5 +1,5 @@
 const test = require('tape')
-const MetaDb = require('..')
+const Metadb = require('..')
 const pull = require('pull-stream')
 const tmpDir = require('tmp').dirSync
 const { isAbout } = require('../schemas')
@@ -8,33 +8,32 @@ const async = require('async')
 const names = ['alice', 'bob']
 
 test('request and reply, 2 actors', t => {
-  const metaDbs = []
+  const metadbs = []
   async.each(names, (name, callback) => {
-    var metaDb = MetaDb({ path: tmpDir().name })
-    metaDb.ready(() => {
-      metaDb.publish.about(name, (err, seq) => {
+    var metadb = Metadb({ path: tmpDir().name })
+    metadb.ready(() => {
+      metadb.publish.about(name, (err, seq) => {
         t.error(err, 'does not throw err')
-        metaDbs.push(metaDb)
+        metadbs.push(metadb)
         callback()
       })
     })
   }, (err) => {
     t.error(err, 'No error')
-    replicate(metaDbs[0], metaDbs[1], (err) => {
+    replicate(metadbs[0], metadbs[1], (err) => {
       t.error(err, 'No error on replicate')
-      metaDbs[0].buildIndexes(() => {
+      metadbs[0].buildIndexes(() => {
         pull(
-          metaDbs[0].query.custom([{ $filter: { value: { type: 'about' } } }]),
-          pull.filter(message => isAbout(message.value)),
+          metadbs[0].core.api.peers.pullStream(),
           pull.collect((err, abouts) => {
             t.error(err, 'does not throw err')
             t.ok(abouts.length > 0, 'the about message exists')
-            const files = ['xvhiEpLSt/XFGCcHmim/4/r6i0InGaJ6GNPS19ciolY=.sha256']
+            const files = ['843b5593e6e1f23daeefb66fa5e49ba7800f5a4b84c03c91fac7f18fb2a3663f']
             // metaDbs[0].publish.request(files, [metaDbs[1].key.toString('hex')])
-            metaDbs[0].publish.request(files, () => {
+            metadbs[0].publish.request(files, () => {
               // metaDbs[0].readMessages(() => {
-              metaDbs[0].requestReply(() => {
-                console.log(metaDbs[0].peerNames)
+              metadbs[0].requestReply(() => {
+                console.log(metadbs[0].peerNames)
                 t.end()
               })
             })

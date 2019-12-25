@@ -1,14 +1,11 @@
 const pull = require('pull-stream')
-const { isAbout } = require('../schemas')
 
-module.exports = function (metaDb) {
+module.exports = function (metadb) {
   return function (callback) { // opts?
     pull(
-      metaDb.query.custom([{ $filter: { value: { type: 'about' } } }]),
-      pull.filter(msg => isAbout(msg.value)),
+      metadb.peers.pullStream(),
       pull.drain((about) => {
-        // TODO compare timestamps?
-        metaDb.peerNames[about.key] = about.value.name
+        metadb.peerNames[about.feedId] = about.name
       }, callback)
     )
   }

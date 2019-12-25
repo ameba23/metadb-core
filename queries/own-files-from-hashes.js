@@ -3,14 +3,14 @@ const pull = require('pull-stream')
 const path = require('path')
 
 // for my files only, given an array of hashes, return an array of filenames
-
-module.exports = function (metaDb) {
+// TODO:  more efficient would be first get files from hashes, then check whose they are
+module.exports = function (metadb) {
   return function (hashList, callback) { // opts?
-    const key = metaDb.key.toString('hex')
+    const key = metadb.key.toString('hex')
     pull(
-      metaDb.query.custom([{ $filter: { key, value: { type: 'addFile' } } }]),
-      pull.filter(file => hashList.indexOf(file.value.sha256) > -1),
-      pull.map(file => getFullPath(file.value.filename, file.seq, metaDb.config.shares)),
+      metadb.files.pullStreamByHolder({ holder: key }), // TODO avoid extra gets
+      pull.filter(file => hashList.includes(file.sha256)),
+      pull.map(file => getFullPath(file.value.filename, file.seq, metadb.config.shares)),
       pull.collect(callback)
     )
   }

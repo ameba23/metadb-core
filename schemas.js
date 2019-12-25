@@ -64,13 +64,13 @@ const isReply = validator({
     branch: {
       required: true,
       type: 'string'
-      // TODO: regex
+      // TODO: regex key@seq
     },
     recipients
   }
 })
 
-const isComment = validator({
+const isFileComment = validator({
   $schema: 'http://json-schema.org/schema#',
   type: 'object',
   properties: {
@@ -88,4 +88,30 @@ const isComment = validator({
   }
 })
 
-module.exports = { isAbout, isRequest, isReply, isComment }
+const isAddFile = validator({
+  $schema: 'http://json-schema.org/schema#',
+  type: 'object',
+  properties: {
+    type: type('addFile'),
+    version,
+    timestamp,
+    sha256: {
+      required: true, // TODO should require some kind of hash, doesnt need to be sha256
+      type: 'string'
+    },
+    filename: {
+      required: true,
+      type: 'string' // TODO dont allow the empty string
+    },
+    size: {
+      required: false, // ?
+      type: 'number' // TODO gt 0
+    },
+    metadata: {
+      required: false, // ?
+      type: 'object' // TODO: specific fields eg: mimeType
+    }
+  }
+})
+
+module.exports = { isAbout, isRequest, isReply, isFileComment, isAddFile }

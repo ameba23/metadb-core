@@ -12,9 +12,9 @@ function uniq (array) {
   return Array.from(new Set(array))
 }
 
-function isHexString (thing, length) {
+function isHexString (thing, lengthInBytes) {
   if (typeof thing !== 'string') return false
-  if (length && (thing.length !== length)) return false
+  if (lengthInBytes && (thing.length !== lengthInBytes * 2)) return false
   return RegExp('[0-9a-fA-F]+').test(thing)
 }
 

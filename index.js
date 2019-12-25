@@ -2,11 +2,14 @@ const kappa = require('kappa-core')
 const path = require('path')
 const mkdirp = require('mkdirp')
 const KappaPrivate = require('kappa-private')
-const level = require('level')
-const PullQuery = require('kappa-view-pull-query')
-const queryMfr = require('./query-mfr')
+const level = require('level') // -mem ?
+const sublevel = require('subleveldown')
 const os = require('os')
 // const thunky = require('thunky')
+
+const createFilesView = require('./views/files')
+const createPeersView = require('./views/peers')
+const createRequestsView = require('./views/requests')
 
 const IndexFiles = require('./index-files')
 const Swarm = require('./swarm')
@@ -18,6 +21,10 @@ const Publish = require('./publish')
 const LOCAL_FEED = 'local'
 const DB = (dir) => path.join(dir, 'db')
 const VIEWS = (dir) => path.join(dir, 'views')
+
+const FILES = 'f'
+const PEERS = 'p'
+const REQUESTS = 'r'
 
 module.exports = (opts) => new MetaDb(opts)
 
@@ -40,6 +47,20 @@ class MetaDb {
       DB(this.metaDbPath),
       { valueEncoding: this.kappaPrivate.encoder() }
     )
+    this.db = level(VIEWS(this.metaDbPath))
+    this.core.use('files', createFilesView(
+      sublevel(this.db, FILES, { valueEncoding: 'json' })
+    ))
+    this.core.use('peers', createPeersView(
+      sublevel(this.db, PEERS, { valueEncoding: 'json' })
+    ))
+    this.core.use('requests', createRequestsView(
+      sublevel(this.db, REQUESTS, { valueEncoding: 'json' })
+    ))
+
+    this.files = this.core.api.files
+    this.peers = this.core.api.peers
+    this.requests = this.core.api.requests
   }
 
   ready (cb) {
@@ -55,10 +76,8 @@ class MetaDb {
   }
 
   buildIndexes (cb) {
-    this.db = level(VIEWS(this.metaDbPath))
-    this.core.use('query', PullQuery(this.db, this.core, queryMfr))
     this.core.ready(() => {
-      // should we do if (this.key)
+      // should we do if (this.key) ?
       this.indexesReady = true
       cb()
     })
@@ -67,7 +86,7 @@ class MetaDb {
   // readMessages (cb) {
   getSettings (cb) {
     if (!this.indexesReady) this.buildIndexes(this.getSettings(cb))
-    this.query.abouts(() => {
+    this.query.peers(() => {
       // this.requestReply(cb)
       cb(null, {
         key: this.key,
