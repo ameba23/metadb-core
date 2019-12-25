@@ -4,13 +4,12 @@ const mkdirp = require('mkdirp')
 const KappaPrivate = require('kappa-private')
 const level = require('level') // -mem ?
 const sublevel = require('subleveldown')
-// const PullQuery = require('kappa-view-pull-query')
-// const queryMfr = require('./query-mfr')
 const os = require('os')
 // const thunky = require('thunky')
 
 const createFilesView = require('./views/files')
 const createPeersView = require('./views/peers')
+const createRequestsView = require('./views/requests')
 
 const IndexFiles = require('./index-files')
 const Swarm = require('./swarm')
@@ -22,8 +21,8 @@ const Publish = require('./publish')
 const LOCAL_FEED = 'local'
 const DB = (dir) => path.join(dir, 'db')
 const VIEWS = (dir) => path.join(dir, 'views')
-const FILESBYHASH = 'h'
-const FILESBYPATH = 'f'
+
+const FILES = 'f'
 const PEERS = 'p'
 const REQUESTS = 'r'
 
@@ -48,6 +47,20 @@ class MetaDb {
       DB(this.metaDbPath),
       { valueEncoding: this.kappaPrivate.encoder() }
     )
+    this.db = level(VIEWS(this.metaDbPath))
+    this.core.use('files', createFilesView(
+      sublevel(this.db, FILES, { valueEncoding: 'json' })
+    ))
+    this.core.use('peers', createPeersView(
+      sublevel(this.db, PEERS, { valueEncoding: 'json' })
+    ))
+    this.core.use('requests', createRequestsView(
+      sublevel(this.db, REQUESTS, { valueEncoding: 'json' })
+    ))
+
+    this.files = this.core.api.files
+    this.peers = this.core.api.peers
+    this.requests = this.core.api.requests
   }
 
   ready (cb) {
@@ -63,17 +76,6 @@ class MetaDb {
   }
 
   buildIndexes (cb) {
-    this.db = level(VIEWS(this.metaDbPath))
-    this.core.use('files', createFilesView(
-      sublevel(this.db, FILESBYHASH, { valueEncoding: 'json' }),
-      sublevel(this.db, FILESBYPATH, { valueEncoding: 'json' })
-    ))
-    this.core.use('peers', createPeersView(
-      sublevel(this.db, PEERS, { valueEncoding: json })
-    ))
-    // this.core.use('requests', createFilesView(
-    //   sublevel(this.db, REQUESTS, { valueEncoding: json })
-    // ))
     this.core.ready(() => {
       // should we do if (this.key) ?
       this.indexesReady = true
@@ -84,7 +86,7 @@ class MetaDb {
   // readMessages (cb) {
   getSettings (cb) {
     if (!this.indexesReady) this.buildIndexes(this.getSettings(cb))
-    this.query.abouts(() => {
+    this.query.peers(() => {
       // this.requestReply(cb)
       cb(null, {
         key: this.key,
@@ -111,16 +113,4 @@ class MetaDb {
 
   swarm (key, cb) { return Swarm(this)(key, cb) }
   unswarm (key, cb) { return Swarm.unswarm(this)(key, cb) }
-}
-
-const json = {
-  encode: function (obj) {
-    return Buffer.from(JSON.stringify(obj))
-  },
-  decode: function (buf) {
-    var str = buf.toString('utf8')
-    try { var obj = JSON.parse(str) } catch (err) { return {} }
-    return obj
-  },
-  buffer: true
 }

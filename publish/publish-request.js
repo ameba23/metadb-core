@@ -2,6 +2,7 @@ const pull = require('pull-stream')
 const assert = require('assert')
 const { uniq, isHexString } = require('../util')
 const SHA256_BYTES = 32 // TODO
+const VERSION = '1.0.0'
 
 module.exports = function (metadb) {
   return function publishRequest (files, callback) {
@@ -15,20 +16,21 @@ module.exports = function (metadb) {
     } catch (err) { return callback(err) }
 
     pull(
-      this.queryFiles(),
-      pull.filter(file => files.includes(file.sha256)),
+      pull.values(files),
+      pull.asyncMap(metadb.core.api.files.get),
       pull.map(file => file.holders),
       pull.collect((err, recipients) => {
         if (err) return callback(err)
-        recipients.push(this.key)
+        recipients.push(metadb.key.toString('hex'))
         recipients = uniq(recipients.flat())
         if (recipients.length > 7) callback(new Error('More than 7 recipients')) // TODO publish multiple messages
         const msg = {
           type: 'request',
-          version: '1.0.0',
+          version: VERSION,
           files,
           timestamp: Date.now(),
-          recipients: recipients.map(recipient => recipient.toString('hex'))
+          recipients
+          // recipients: recipients.map(recipient => recipient.toString('hex'))
         }
         metadb.localFeed.append(msg, callback)
       })

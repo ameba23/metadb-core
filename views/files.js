@@ -4,38 +4,48 @@ const pullLevel = require('pull-level')
 const pull = require('pull-stream')
 const { isAddFile } = require('../schemas')
 
-module.exports = function (byHash, byPath) {
+const HASH = 'h!'
+const PATH = 'p!'
+const HOLDER = 'o!'
+
+module.exports = function (level) {
   const events = new EventEmitter()
   return {
     maxBatch: 100,
 
     map: function (msgs, next) {
-      const opsByHash = []
-      const opsByPath = []
+      const ops = []
       // const seen = {}
       var pending = 0
       msgs.forEach(function (msg) {
         if (!sanitize(msg)) return
         pending++
         delete msg.value.type
-        msg.value.holders = [msg.key]
+        delete msg.value.version
         let merged = msg.value
-        byHash.get(msg.value.sha256, function (err, existingValue) {
+        level.get(HASH + msg.value.sha256, function (err, existingValue) {
           if (!(err && err.notFound)) {
-            msg.value.holders = existingValue.holders
-            if (!msg.value.holders.includes(msg.key)) msg.value.holders.push(msg.key)
             merged = merge(existingValue, msg.value) // TODO: this will clobber old values
           }
 
-          opsByHash.push({
+          merged.holders = merged.holders || []
+          if (!merged.holders.includes(msg.key)) merged.holders.push(msg.key)
+
+          ops.push({
             type: 'put',
-            key: msg.value.sha256,
+            key: HASH + msg.value.sha256,
             value: merged
           })
 
-          opsByPath.push({
+          ops.push({
             type: 'put',
-            key: msg.value.filename + '!' + msg.value.timestamp,
+            key: PATH + msg.value.filename + '!' + msg.value.timestamp,
+            value: msg.value.sha256
+          })
+
+          ops.push({
+            type: 'put',
+            key: HOLDER + msg.key + '@' + msg.seq,
             value: msg.value.sha256
           })
 
@@ -45,10 +55,7 @@ module.exports = function (byHash, byPath) {
       if (!pending) done()
 
       function done () {
-        byHash.batch(opsByHash, (err) => {
-          if (err) return next(err)
-          byPath.batch(opsByPath, next)
-        })
+        level.batch(ops, next)
       }
     },
 
@@ -56,22 +63,21 @@ module.exports = function (byHash, byPath) {
       msgs
         .filter(msg => Boolean(sanitize(msg)))
         .forEach((msg) => {
-          events.emit('file', msg)
+          events.emit('updatedFiles', msg)
         })
     },
 
     api: {
-      getByHash: function boop (core, sha256, cb) {
+      get: function (core, sha256, cb) {
         this.ready(() => {
-        // TODO buffer to hex
-          byHash.get(sha256, cb)
+          level.get(HASH + sha256, cb)
         })
       },
       pathToHash: (core, filePath, cb) => {
         const res = []
-        const stream = byPath.createReadStream({
-          gt: filePath + '!!',
-          lt: filePath + '!~'
+        const stream = level.createReadStream({
+          gt: PATH + filePath + '!!',
+          lt: PATH + filePath + '!~'
         })
         stream.on('data', function (row) {
           if (row.key.split('!')[0] === filePath) res.push(row.value)
@@ -79,28 +85,67 @@ module.exports = function (byHash, byPath) {
         stream.once('end', () => cb(null, res))
         stream.once('error', cb)
       },
-      pullStream: () => {
+      pullStream: (core, opts) => {
         return pull(
-          pullLevel.read(byHash, { keys: false }) // {live: true}
+          pullLevel.read(level, Object.assign({
+            keys: false,
+            gte: HASH,
+            lte: HASH + '~'
+          }, opts)) // {live: true}
         )
       },
       pullStreamByPath: function (core, opts = {}) {
-        if (opts.subdir) {
-          opts = {
-            gte: opts.subdir,
-            lte: opts.subdir + '~'
-            // lte: String.fromCharCode(key.charCodeAt(0) + 1)
-          }
+        opts.subdir = opts.subdir || ''
+        const subOpts = {
+          keys: false,
+          gte: PATH + opts.subdir,
+          lte: PATH + opts.subdir + '~'
+          // lte: String.fromCharCode(key.charCodeAt(0) + 1)
         }
+        delete opts.subdir
         // this.ready(() => {
         // return cb(null, pull(
         return pull(
-          pullLevel.read(byPath, Object.assign({ keys: false }, opts)),
+          pullLevel.read(level, Object.assign(subOpts, opts)),
           pull.asyncMap((hash, cb) => {
-            core.api.files.getByHash(hash, cb)
+            core.api.files.get(hash, cb)
           })
         )
-        // })
+      },
+      pullStreamByHolder: function (core, opts = {}) {
+        opts.holder = opts.holder || ''
+        const subOpts = {
+          keys: false,
+          gte: HOLDER + opts.holder,
+          lte: HOLDER + opts.holder + '~'
+        }
+        delete opts.holder
+        return pull(
+          pullLevel.read(level, Object.assign(subOpts, opts)),
+          pull.asyncMap((hash, cb) => {
+            core.api.files.get(hash, cb)
+          })
+        )
+      },
+      count: function (core, opts = {}, cb) {
+        let files = 0
+        const peerFiles = {}
+        pull(
+          core.api.files.pullStream(opts),
+          pull.drain((file) => {
+            files++
+            file.holders.forEach((peer) => {
+              peerFiles[peer] = peerFiles[peer] || 0
+              peerFiles[peer]++
+            })
+            return true
+          }, (err) => {
+            cb(err, {
+              files,
+              peerFiles
+            })
+          })
+        )
       },
       events: events
     }

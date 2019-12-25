@@ -1,58 +1,36 @@
 const pull = require('pull-stream')
-// const QueryFiles = require('./query-files')
 const QueryAbouts = require('./query-abouts')
-const { isRequest, isReply } = require('../schemas')
 
 module.exports = function Query (metadb) {
-  const custom = query
-  return { files, peers, abouts, ownFiles, filesByPeer, filenameSubstring, subdir, byExtension, custom, byMimeCategory }
+  return { files, peers, abouts, ownFiles, filesByPeer, filenameSubstring, subdir, byExtension, byMimeCategory }
 
-  function query (query, opts = {}) {
-    if (!metadb.indexesReady) throw new Error('Indexes not ready, run buildIndexes')
-    return pull(
-      metadb.core.api.query.read(Object.assign(opts, { live: false, reverse: true, query }))
-    )
-  }
-
-  function files () { return QueryFiles(metadb)() }
   function files () { return metadb.core.api.files.pullStream() }
 
-  function peers () {
-    // TODO incorporate query-abouts
-    return pull(
-      query([
-        { $filter: { value: { type: 'addFile' } } },
-        {
-          $reduce: {
-            peerId: 'key',
-            numberFiles: { $count: true }
+  function peers (callback) {
+    metadb.files.count(null, (err, counters) => {
+      if (err) return callback(err)
+      pull(
+        pull.values(Object.keys(counters.peerFiles)),
+        pull.map((peerKey) => {
+          return {
+            feedId: peerKey,
+            numberFiles: counters.peerFiles[peerKey]
           }
-        }
-      ]),
-      pull.map((peer) => {
-        peer.name = metadb.peerNames[peer.peerId]
-        return peer
-      })
-    )
+        }),
+        pull.asyncMap((peerObj, cb) => {
+          metadb.peers.getName(peerObj.feedId, (err, name) => {
+            if (!err) peerObj.name = name
+            return cb(null, peerObj)
+          })
+        }),
+        pull.collect(callback)
+      )
+    })
   }
 
-  function ownFiles () { return filesByPeer(metadb.localFeed.key) }
+  function ownFiles () { return filesByPeer(metadb.key.toString('hex')) }
 
-  function filesByPeer (peerKey) {
-    // TODO this is a bad query, not very efficient
-    // var self = this
-    function myFile (file) {
-      // TODO use lodash get
-      return file.holders
-        ? file.holders.indexOf(peerKey.toString('hex')) > -1
-        : false
-    }
-
-    return pull(
-      files(),
-      pull.filter(myFile)
-    )
-  }
+  function filesByPeer (holder) { return metadb.files.pullStreamByHolder({ holder }) }
 
   function filenameSubstring (searchterm) {
     const substrings = searchterm.split(' ').map(s => s.toLowerCase())
@@ -75,11 +53,7 @@ module.exports = function Query (metadb) {
   }
 
   function subdir (subdir) {
-    return pull(
-      files(),
-      pull.filter((file) => file.filename.slice(0, subdir.length) === subdir),
-      pull.map((a) => { console.log(a); return a })
-    )
+    return metadb.files.pullStreamByPath({ subdir })
   }
 
   function byExtension (extensions) {
@@ -89,7 +63,7 @@ module.exports = function Query (metadb) {
       files(),
       pull.filter((file) => {
         // TODO lodash get
-        return extensions.indexOf(file.filename.split('.').pop().toLowerCase()) > -1
+        return extensions.includes(file.filename.split('.').pop().toLowerCase())
       })
     )
   }
@@ -115,30 +89,18 @@ module.exports = function Query (metadb) {
 
   function ownRequests () {
     const key = metadb.key.toString('hex')
-    return pull(
-      // requests FROM me
-      metadb.query.custom([{ $filter: { key, value: { type: 'request' } } }]),
-      pull.filter(msg => isRequest(msg.value))
-    )
+    // requests FROM me
+    return metadb.requests.pullStream({
+      gte: key,
+      lte: key + '~'
+    })
   }
 
   function ownRequestsPending () {
-    const key = metadb.key.toString('hex')
     return pull(
       ownRequests(),
       pull.filter((request) => {
-        const branchString = `${request.key}@${request.seq}`
-        pull(
-          // Replies FROM others
-          metadb.query.custom([{ $filter: { key: { $ne: key }, value: { type: 'reply' } } }]),
-          pull.filter(msg => isReply(msg.value)),
-          pull.map(msg => msg.value.branch),
-          pull.filter(replyBranch => replyBranch === branchString),
-          pull.collect((err, replies) => {
-            if (err) throw err
-            return replies.length
-          })
-        )
+        return !!request.replies
       })
     )
   }

@@ -9,7 +9,5 @@ module.exports = function Publish (metadb) {
   function about (name, cb) { return PublishAbout(metadb)(name, cb) }
   function request (files, cb) { return PublishRequest(metadb)(files, cb) }
   function reply (...args) { return PublishReply(metadb)(...args) }
-  function fileComment () {
-    
-  }
+  function fileComment () { } // TODO 
 }

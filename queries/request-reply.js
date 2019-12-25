@@ -1,7 +1,7 @@
 const pull = require('pull-stream')
 const { isRequest, isReply } = require('../schemas')
 const OwnFilesFromHashes = require('./own-files-from-hashes')
-const createDat = require('../create-dat')
+const createDat = require('../create-dat') // publishFiles
 
 module.exports = function (metaDb) {
   return function (callback) {

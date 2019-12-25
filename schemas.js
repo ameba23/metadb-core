@@ -64,13 +64,13 @@ const isReply = validator({
     branch: {
       required: true,
       type: 'string'
-      // TODO: regex
+      // TODO: regex key@seq
     },
     recipients
   }
 })
 
-const isComment = validator({
+const isFileComment = validator({
   $schema: 'http://json-schema.org/schema#',
   type: 'object',
   properties: {
@@ -114,4 +114,4 @@ const isAddFile = validator({
   }
 })
 
-module.exports = { isAbout, isRequest, isReply, isComment, isAddFile }
+module.exports = { isAbout, isRequest, isReply, isFileComment, isAddFile }

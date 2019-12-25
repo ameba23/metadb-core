@@ -1,28 +1,29 @@
 const test = require('tape')
-const MetaDb = require('..')
+const Metadb = require('..')
 const pull = require('pull-stream')
 const tmpDir = require('tmp').dirSync
-const { isAbout } = require('../schemas')
+// const { isAbout } = require('../schemas')
 
 const name = 'alice'
 
 test('publish an about message', t => {
-  var metaDb = MetaDb({ path: tmpDir().name })
-  metaDb.ready(() => {
-    metaDb.publish.about(name, (err, seq) => {
+  var metadb = Metadb({ path: tmpDir().name })
+  metadb.ready(() => {
+    metadb.publish.about(name, (err, seq) => {
       t.error(err, 'does not throw err')
-      metaDb.buildIndexes(() => {
+      metadb.buildIndexes(() => {
         pull(
-          metaDb.query.custom([{ $filter: { value: { type: 'about', name } } }]),
-          pull.filter(message => isAbout(message.value)),
+          // metaDb.query.custom([{ $filter: { value: { type: 'about', name } } }]),
+          metadb.core.api.peers.pullStream(),
           pull.collect((err, abouts) => {
             t.error(err, 'does not throw err')
-            // todo: isabout()
             t.ok(abouts.length > 0, 'the about message exists')
-            metaDb.readMessages(() => {
-              console.log(metaDb.peerNames)
-              t.end()
-            })
+            t.equal(abouts[0].name, 'alice', 'name correct')
+            t.equal(abouts[0].feedId, metadb.key.toString('hex'), 'feedId correct')
+            t.end()
+            // metaDb.readMessages(() => {
+              // console.log(metaDb.peerNames)
+            // })
           })
         )
       })
