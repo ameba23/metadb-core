@@ -4,27 +4,24 @@ const chalk = require('chalk')
 const path = require('path')
 const glob = require('glob')
 const fileType = require('file-type')
+const extract = require('metadata-extract')
 
 const ignore = require('./ignore.js')
 const { sha256 } = require('./crypto')
 const { readableBytes } = require('./util')
 const { isAddFile } = require('./schemas') // TODO
 
-const log = console.log
-const extractorsPath = './extractors/'
-const defaultExtractors = ['music-metadata'] // TODO put this somewhere else
-const defaultExtractorFns = defaultExtractors.map(filename => require(extractorsPath + filename))
 
 const SCHEMAVERSION = '1.0.0'
 
 module.exports = function indexKappa (metadb) {
-  return function (dir, extractors, callback) {
+  return function (dir, opts = {}, callback) {
     if (!metadb.localFeed) return callback(new Error('No local feed, call ready()'))
-    if (typeof extractors === 'function' && !callback) {
-      callback = extractors
-      extractors = null
+    if (typeof opts === 'function' && !callback) {
+      callback = opts
+      opts = {}
     }
-    extractors = extractors || defaultExtractorFns
+    const log = opts.log || console.log
     ignore.setup(() => {
       var highestSeq
       var dataAdded = 0
@@ -51,7 +48,7 @@ module.exports = function indexKappa (metadb) {
               log(
                 `Extracting metadata from: ${chalk.green(file)} length: ${chalk.green(readableBytes(size))} ${chalk.blue(hash.slice(-8))}`
               )
-              extract(data, file, (err, metadata) => {
+              extract(data, { filename: file }, (err, metadata) => {
                 if (err) return cb(err) // or just carry on?
 
                 var newEntry = {
@@ -113,55 +110,5 @@ module.exports = function indexKappa (metadb) {
         )
       })
     })
-    function extract (data, filepath, callback) { // ext
-      const metadata = {
-        mimeType: getMimeType(data),
-        extension: path.extname(filepath)
-      }
-      console.log(metadata.mimeType)
-      pull(
-        pull.values(extractors),
-        pull.asyncMap((extractor, cb) => {
-          try {
-            extractor(data, metadata, cb)
-          } catch (err) {
-            log(err)
-            cb()
-          } // ignore errors and keep going
-        }),
-        // pull.filter(Boolean),
-        pull.filter(t => !!t),
-        pull.map(sanitise),
-        // should this be a reducer?
-        pull.collect((err, metadatas) => {
-          if (err) return callback(err) // TODO: or ingore?
-          Object.assign(metadata, ...metadatas)
-          callback(null, metadata)
-        })
-      )
-    }
-
-    function getMimeType (data) {
-      // TODO: file-type can also take a stream
-      let ft
-      if (data.length >= fileType.minimumBytes) {
-        ft = fileType(data)
-      }
-      // TODO if ft undefined, get ft from extension
-      return ft
-        ? ft.mime
-        : undefined
-    }
-
-    function sanitise (metadata) {
-      if (metadata && typeof metadata === 'object') {
-        Object.keys(metadata).forEach((key) => {
-          const value = metadata[key]
-          if (typeof value === 'object') return sanitise(value)
-          if (Buffer.isBuffer(value)) delete metadata[key]
-        })
-      } else { console.log(metadata) } // TODO
-      return metadata
-    }
   }
 }
