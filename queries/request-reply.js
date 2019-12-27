@@ -1,50 +1,75 @@
 const pull = require('pull-stream')
-const { isRequest, isReply } = require('../schemas')
 const OwnFilesFromHashes = require('./own-files-from-hashes')
-const createDat = require('../create-dat') // publishFiles
+const { publish, download } = require('../transfer/dat') // publishFiles
 
-module.exports = function (metaDb) {
+module.exports = function (metadb) {
   return function (callback) {
-    const key = metaDb.key.toString('hex')
-    // replies *FROM* me:
+    const key = metadb.key.toString('hex')
+
+    // requests *TO* me:
     pull(
-      metaDb.query.custom([{ $filter: { key }, value: { type: 'reply' } }]),
-      pull.filter(msg => isReply(msg.value)),
-      pull.map(msg => msg.value.branch),
-      pull.drain((reply) => {
-        if (metaDb.repliedTo.indexOf(reply) < 0) metaDb.repliedTo.push(reply)
-      }, checkRequests())
+      // metadb.requests.pullNotFromFeedId(key),
+      metadb.requests.pull(),
+      pull.filter((request) => {
+        return request.msgSeq.split('@')[0] !== key
+      }),
+      pull.filter((request) => {
+        console.log('------------------------------REQUEST:', request)
+        // TODO explicity check that we are included as a recipient?
+        return request.replies
+          ? request.replies.find(reply => reply.from === key)
+          : true
+      }),
+      pull.asyncMap(processRequest),
+      // pull.collect(processOwnReqests(callback))
+      pull.collect(callback)
     )
 
-    function checkRequests () {
-      // requests *TO* me:
-      pull(
-        metaDb.query.custom([{ $filter: { key: { $ne: key }, value: { type: 'request' } } }]),
-        pull.filter(msg => isRequest(msg.value)),
-        pull.filter((request) => {
-          const branchString = `${request.key}@${request.seq}`
-          return metaDb.repliedTo.indexOf(branchString) < 0
-        }),
-        pull.drain(processRequest, callback)
-      )
-    }
-
-    function processRequest (request) {
-      OwnFilesFromHashes(metaDb)(request.value.files, (err, filePaths) => {
+    function processRequest (request, cb) {
+      OwnFilesFromHashes(metadb)(request.files, (err, filePaths) => {
+        console.log('filepaths:', filePaths)
         if (err || !filePaths.length) {
-          // reply should contain an error message
-
+          // publish a reply with an error message?
+          return cb() // err?
         }
-        createDat(filePaths, (err, datLink) => {
-          if (err) return callback(err)
-          const branch = `${request.key}@${request.seq}`
-          metaDb.publishReply(datLink, request.key, branch, (err, seq) => {
-            if (err) callback(err) // new error 'problem publishing?'
-            metaDb.repliedTo.push(branch)
-            callback()
+        publish(filePaths, metadb.storage, (err, link, network) => {
+          if (err) return cb(err) // also publish a sorry message?
+          const branch = request.msgSeq
+          const recipient = branch.split('@')[0]
+          metadb.publish.reply(link, recipient, branch, (err, seq) => {
+            if (err) return callback(err)
+            // metadb.repliedTo.push(branch)
+            // update index?
+            cb(null, true) // null, network
           })
         })
       })
     }
+  }
+
+  function processOwnReqests (callback) {
+    pull(
+      metadb.requests.pullFromFeedId(metadb.keyHex),
+      pull.filter((request) => {
+        return (request.replies && request.replies.length)
+      }),
+      pull.asyncMap((request, cb) => {
+        pull(
+          pull.values(request.replies),
+          pull.asyncMap((reply, cb2) => {
+            if (!reply.closed) {
+              download(reply.link, metadb.downloadPath, (err, network) => {
+                if (err) return cb2(err)
+                console.log(network)
+                metadb.pendingDownloads.push(network) // TODO somehow check its not already there
+                cb2(null, network)
+              })
+            }
+          }),
+          pull.collect(cb)
+        )
+      }),
+      pull.collect(callback)
+    )
   }
 }

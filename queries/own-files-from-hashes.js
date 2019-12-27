@@ -6,20 +6,27 @@ const path = require('path')
 // TODO:  more efficient would be first get files from hashes, then check whose they are
 module.exports = function (metadb) {
   return function (hashList, callback) { // opts?
+    console.log('hashlist', hashList)
     const key = metadb.key.toString('hex')
     pull(
-      metadb.files.pullStreamByHolder({ holder: key }), // TODO avoid extra gets
-      pull.filter(file => hashList.includes(file.sha256)),
-      pull.map(file => getFullPath(file.value.filename, file.seq, metadb.config.shares)),
+      pull.values(hashList),
+      pull.asyncMap((hash, cb) => {
+        console.log('hash to get', hash)
+        metadb.sharedb.get(hash, cb)
+      }),
+      pull.filter((f) => {
+        console.log(f)
+        return true
+      }),
       pull.collect(callback)
     )
   }
 }
 
-function getFullPath (filename, seq, shares) {
-  const sharePath = shares[Object.keys(shares).find(s => s >= seq)]
-  return path.join(sharePath, filename)
-}
+// function getFullPath (filename, seq, shares) {
+//   const sharePath = shares[Object.keys(shares).find(s => s >= seq)]
+//   return path.join(sharePath, filename)
+// }
 
 // example:  highest sequence number added
 //   { 5: '~/music', 50: '/docs', 123: '~/speedcore' }

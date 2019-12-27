@@ -17,7 +17,7 @@ test('publish a request message', t => {
           t.notOk(err, 'does not throw err')
           metadb.buildIndexes(() => {
             pull(
-              metadb.core.api.requests.pullStream(),
+              metadb.requests.pull(),
               pull.collect((err, requests) => {
                 t.error(err, 'does not throw err')
                 t.equal(requests.length, 1, 'The request message exists')

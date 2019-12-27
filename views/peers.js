@@ -1,5 +1,4 @@
 const EventEmitter = require('events').EventEmitter
-const merge = require('deepmerge')
 const pullLevel = require('pull-level')
 const pull = require('pull-stream')
 const { isAbout } = require('../schemas')

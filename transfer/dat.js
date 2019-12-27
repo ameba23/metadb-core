@@ -4,12 +4,12 @@ const mkdirp = require('mkdirp')
 const path = require('path')
 const pull = require('pull-stream')
 
-const basedir = '.' // TODO
-
 const log = console.log
 
-module.exports = function (files, callback) {
-  const datPath = path.join(basedir, 'pending')
+module.exports = { publish, download }
+
+function publish (files, baseDir, callback) {
+  const datPath = path.join(baseDir, 'pending')
   mkdirp.sync(datPath)
   pull(
     pull.values(files),
@@ -26,11 +26,12 @@ module.exports = function (files, callback) {
         if (err) return callback(err)
         const progress = dat.importFiles(datPath, (err) => {
           if (err) return callback(err)
+          const datNetwork = dat.joinNetwork()
           log('Finished importing')
           log('Archive size:', dat.archive.content.byteLength)
           const link = 'dat://' + dat.key.toString('hex')
           log(`Dat link is: ${link}`)
-          callback(null, link)
+          callback(null, link, datNetwork)
         })
         progress.on('put', function (src, dest) {
           log('Added', dest.name)
@@ -38,4 +39,20 @@ module.exports = function (files, callback) {
       })
     })
   )
+}
+
+function download (link, downloadPath, callback) {
+  // const datPath = path.join(baseDir, 'downloads')
+  if (link.slice(0, 6) === 'dat://') link = link.slice(6)
+  // TODO isHexString(link, 32) if not, remove the trailing path, open with sparse: true, and do archive.readFile
+  Dat(downloadPath, { key: Buffer.from(link, 'hex') }, (err, dat) => {
+    if (err) return callback(err)
+    dat.joinNetwork((err) => {
+      if (err) return callback(err)
+      if (!dat.network.connected || !dat.network.connecting) {
+        // TODO: Warn that the peer is not online
+      }
+      callback(null, dat)
+    })
+  })
 }

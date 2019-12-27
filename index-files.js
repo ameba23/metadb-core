@@ -76,6 +76,7 @@ module.exports = function indexKappa (metadb) {
                     cb(null, newEntry)
                   }
                 })
+
                 feedStream.on('end', () => {
                   if (!duplicate) {
                     newEntry.timestamp = Date.now()
@@ -84,7 +85,10 @@ module.exports = function indexKappa (metadb) {
                       log('Data was appended as entry #' + seq)
                       highestSeq = seq
                       dataAdded += 1
-                      cb(null, newEntry)
+                      metadb.sharedb.put(hash, path.join(dir, file), (err) => {
+                        if (err) return cb(err)
+                        cb(null, newEntry)
+                      })
                     })
                   }
                 })
@@ -143,6 +147,7 @@ module.exports = function indexKappa (metadb) {
       if (data.length >= fileType.minimumBytes) {
         ft = fileType(data)
       }
+      // TODO if ft undefined, get ft from extension
       return ft
         ? ft.mime
         : undefined
@@ -155,7 +160,7 @@ module.exports = function indexKappa (metadb) {
           if (typeof value === 'object') return sanitise(value)
           if (Buffer.isBuffer(value)) delete metadata[key]
         })
-      } else { console.log(metadata) }
+      } else { console.log(metadata) } // TODO
       return metadata
     }
   }

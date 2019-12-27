@@ -4,6 +4,7 @@ const FEED_KEY_LENGTH = 32
 
 module.exports = function (metadb) {
   return function publishReply (link, recipient, branch, callback) {
+    console.log('recipient is :',recipient)
     try {
       assert(metadb.localFeed, 'No local feed')
       assert(isHexString(recipient, FEED_KEY_LENGTH), 'Recipient key must be 32 byte hex encoded string')

@@ -18,6 +18,7 @@ module.exports = function (level) {
         delete msg.value.version
         if (msg.value.type === 'request') {
           delete msg.value.type
+          // TODO: should we get first to include replies from before?
           ops.push({
             type: 'put',
             key: msg.key + '@' + msg.seq,
@@ -56,11 +57,24 @@ module.exports = function (level) {
           level.get(keySeq, cb)
         })
       },
-      pullStream: (core, opts = {}) => {
+      pull: function (core, opts = {}) {
         return pull(
           pullLevel.read(level, opts), // {live: true}
           pull.map(kv => Object.assign(kv.value, { msgSeq: kv.key }))
         )
+      },
+      pullFromFeedId: function (core, feedId) {
+        return core.api.requests.pull({
+          gte: feedId,
+          lte: feedId + '~'
+        })
+      },
+      pullNotFromFeedId: function (core, feedId) {
+        return core.api.requests.pull({
+          // TODO
+          gt: feedId,
+          lt: feedId 
+        })
       },
       events: events
     }
