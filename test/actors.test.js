@@ -2,9 +2,12 @@ const test = require('tape')
 const Metadb = require('..')
 const pull = require('pull-stream')
 const tmpDir = require('tmp').dirSync
-const { isAbout } = require('../schemas')
 const async = require('async')
-
+const path = require('path')
+const pathToIndex = {
+  alice: path.join(path.resolve(__dirname), './test-media2'),
+  bob: path.join(path.resolve(__dirname), './test-media')
+}
 const names = ['alice', 'bob']
 
 test('request and reply, 2 actors', t => {
@@ -14,8 +17,13 @@ test('request and reply, 2 actors', t => {
     metadb.ready(() => {
       metadb.publish.about(name, (err, seq) => {
         t.error(err, 'does not throw err')
-        metadbs.push(metadb)
-        callback()
+        metadb.indexFiles(pathToIndex[name], (err) => {
+          t.error(err, 'does not throw err')
+          metadb.buildIndexes(() => {
+            metadbs.push(metadb)
+            callback()
+          })
+        })
       })
     })
   }, (err) => {
@@ -29,12 +37,22 @@ test('request and reply, 2 actors', t => {
             t.error(err, 'does not throw err')
             t.ok(abouts.length > 0, 'the about message exists')
             const files = ['843b5593e6e1f23daeefb66fa5e49ba7800f5a4b84c03c91fac7f18fb2a3663f']
-            // metaDbs[0].publish.request(files, [metaDbs[1].key.toString('hex')])
-            metadbs[0].publish.request(files, () => {
-              // metaDbs[0].readMessages(() => {
-              metadbs[0].requestReply(() => {
-                console.log(metadbs[0].peerNames)
-                t.end()
+            metadbs[0].publish.request(files, (err) => {
+              t.error(err, 'no err on publishing request')
+              replicate(metadbs[0], metadbs[1], (err) => {
+                t.error(err, 'No error on replicate')
+                metadbs[1].buildIndexes(() => {
+                  metadbs[1].query.requestReply((err, successes) => {
+                    t.error(err, 'requests processed without error')
+                    t.equal(successes.length, 1, 'returns one element')
+                    t.equal(successes[0], true, 'returns success')
+                    replicate(metadbs[0], metadbs[1], (err) => {
+                      t.error(err, 'No error on replicate')
+
+                      t.end()
+                    })
+                  })
+                })
               })
             })
           })
