@@ -62,6 +62,7 @@ class MetaDb {
     this.files = this.core.api.files
     this.peers = this.core.api.peers
     this.requests = this.core.api.requests
+    this.requests.events.on('update')
   }
 
   ready (cb) {

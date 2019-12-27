@@ -49,8 +49,10 @@ module.exports = function (level) {
       }
     },
 
-    // indexed: 
-    //
+    indexed: (msgs) => {
+      events.emit('update', msgs)
+    },
+
     api: {
       get: function (core, keySeq, cb) {
         this.ready(() => {
@@ -73,7 +75,7 @@ module.exports = function (level) {
         return core.api.requests.pull({
           // TODO
           gt: feedId,
-          lt: feedId 
+          lt: feedId
         })
       },
       events: events

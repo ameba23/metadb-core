@@ -30,8 +30,10 @@ module.exports = function (level) {
       }
     },
 
-    // indexed: 
-    //
+    indexed: (msgs) => {
+      events.emit('update', msgs)
+    },
+
     api: {
       getName: function (core, feedId, cb) {
         // this.ready(() => {})

@@ -63,7 +63,7 @@ module.exports = function (level) {
       msgs
         .filter(msg => Boolean(sanitize(msg)))
         .forEach((msg) => {
-          events.emit('updatedFiles', msg)
+          events.emit('update', msg)
         })
     },
 
