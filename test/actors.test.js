@@ -13,7 +13,7 @@ const names = ['alice', 'bob']
 test('request and reply, 2 actors', t => {
   const metadbs = []
   async.each(names, (name, callback) => {
-    var metadb = Metadb({ path: tmpDir().name })
+    var metadb = Metadb({ path: tmpDir().name, test: true })
     metadb.ready(() => {
       metadb.publish.about(name, (err, seq) => {
         t.error(err, 'does not throw err')
@@ -42,7 +42,7 @@ test('request and reply, 2 actors', t => {
               replicate(metadbs[0], metadbs[1], (err) => {
                 t.error(err, 'No error on replicate')
                 metadbs[1].buildIndexes(() => {
-                  metadbs[1].query.requestReply((err, successes) => {
+                  metadbs[1].query.processRequestsFromOthers((err, successes) => {
                     t.error(err, 'requests processed without error')
                     t.equal(successes.length, 1, 'returns one element')
                     t.equal(successes[0], true, 'returns success')

@@ -1,27 +1,20 @@
 const pull = require('pull-stream')
 const OwnFilesFromHashes = require('./own-files-from-hashes')
-const { publish, download } = require('../transfer/dat') // publishFiles
+const { publish } = require('../transfer/dat') // publishFiles
 
 module.exports = function (metadb) {
   return function (callback) {
-    const key = metadb.key.toString('hex')
-
     // requests *TO* me:
     pull(
-      // metadb.requests.pullNotFromFeedId(key),
-      metadb.requests.pull(),
-      pull.filter((request) => {
-        return request.msgSeq.split('@')[0] !== key
-      }),
+      metadb.query.requestsFromOthers(),
       pull.filter((request) => {
         console.log('------------------------------REQUEST:', request)
         // TODO explicity check that we are included as a recipient?
         return request.replies
-          ? request.replies.find(reply => reply.from === key)
+          ? request.replies.find(reply => reply.from === metadb.keyHex)
           : true
       }),
       pull.asyncMap(processRequest),
-      // pull.collect(processOwnReqests(callback))
       pull.collect(callback)
     )
 
@@ -45,31 +38,5 @@ module.exports = function (metadb) {
         })
       })
     }
-  }
-
-  function processOwnReqests (callback) {
-    pull(
-      metadb.requests.pullFromFeedId(metadb.keyHex),
-      pull.filter((request) => {
-        return (request.replies && request.replies.length)
-      }),
-      pull.asyncMap((request, cb) => {
-        pull(
-          pull.values(request.replies),
-          pull.asyncMap((reply, cb2) => {
-            if (!reply.closed) {
-              download(reply.link, metadb.downloadPath, (err, network) => {
-                if (err) return cb2(err)
-                console.log(network)
-                metadb.pendingDownloads.push(network) // TODO somehow check its not already there
-                cb2(null, network)
-              })
-            }
-          }),
-          pull.collect(cb)
-        )
-      }),
-      pull.collect(callback)
-    )
   }
 }

@@ -1,25 +1,32 @@
 const pull = require('pull-stream')
 const Abouts = require('./query-abouts')
-const RequestReply = require('./request-reply')
+const ProcessRequestsFromOthers = require('./processRequestsFromOthers')
+const ProcessRequestsFromSelf = require('./processRequestsFromSelf')
 
 module.exports = function Query (metadb) {
-  const queries = {
+  const query = {
     files: () => metadb.core.api.files.pullStream(),
 
     abouts: Abouts(metadb),
 
-    ownFiles: () => queries.filesByPeer(metadb.key.toString('hex')),
+    ownFiles: () => {
+      return pull(
+        query.filesByPeer(metadb.keyHex),
+        pull.map(f => { console.log(f); return f })
+        // pull.asyncMap((file, cb) => {
+        //   metadb.sharedb.get(file.sha256, (err, path) => {
+        // })
+      )
+    },
 
     filesByPeer: holder => metadb.files.pullStreamByHolder({ holder }),
 
     subdir: subdir => metadb.files.pullStreamByPath({ subdir }),
 
-    requestReply: RequestReply(metadb),
-
     filenameSubstring: function filenameSubstring (searchterm) {
       const substrings = searchterm.split(' ').map(s => s.toLowerCase())
       return pull(
-        queries.files(),
+        query.files(),
         pull.filter((file) => {
           var found = 0
           substrings.forEach(substring => {
@@ -40,7 +47,7 @@ module.exports = function Query (metadb) {
       if (typeof extensions === 'string') extensions = [extensions]
       extensions = extensions.map(e => e.toLowerCase())
       return pull(
-        queries.files(),
+        query.files(),
         pull.filter((file) => {
           // TODO lodash get
           return extensions.includes(file.filename.split('.').pop().toLowerCase())
@@ -73,7 +80,7 @@ module.exports = function Query (metadb) {
     byMimeCategory: function (categories) {
       if (typeof categories === 'string') categories = [categories]
       return pull(
-        queries.files(),
+        query.files(),
         pull.filter((file) => {
           if (file.metadata.mimeType) {
             // TODO add special cases eg: application/pdf = document/book
@@ -85,25 +92,22 @@ module.exports = function Query (metadb) {
           }
         })
       )
-    }
-  }
-  return queries
-  // TODO move this to the view
-  function ownRequests () {
-    const key = metadb.key.toString('hex')
-    // requests FROM me
-    return metadb.requests.pullStream({
-      gte: key,
-      lte: key + '~'
-    })
-  }
+    },
 
-  function ownRequestsPending () {
-    return pull(
-      ownRequests(),
-      pull.filter((request) => {
-        return !!request.replies
-      })
-    )
+    requestsFromOthers: function () {
+      return pull(
+        // TODO metadb.requests.pullNotFromFeedId(key),
+        metadb.requests.pull(),
+        pull.filter((request) => {
+          return request.msgSeq.split('@')[0] !== metadb.keyHex
+        })
+      )
+    },
+
+    requestsFromSelf: () => metadb.requests.pullFromFeedId(metadb.keyHex),
+
+    processRequestsFromOthers: ProcessRequestsFromOthers(metadb),
+    processRequestsFromSelf: ProcessRequestsFromSelf(metadb)
   }
+  return query
 }
