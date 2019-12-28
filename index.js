@@ -34,6 +34,10 @@ class MetaDb {
     this.storage = opts.path || path.join(os.homedir(), '.metadb')
     mkdirp.sync(this.storage)
     this.kappaPrivate = KappaPrivate()
+    this.downloadPath = opts.test
+      ? path.join(this.storage, 'downloads')
+      : path.join(this.storage, 'downloads') // os.homedir(), 'Downloads' ?
+    mkdirp.sync(this.downloadPath)
 
     this.peerNames = {}
     this.repliedTo = []
@@ -65,7 +69,10 @@ class MetaDb {
 
     this.files.events.on('update', () => {})
     this.peers.events.on('update', () => {})
-    this.requests.events.on('update', () => {})
+    this.requests.events.on('update', () => {
+      this.query.processRequestsFromOthers(console.log)
+      this.query.processRequestsFromSelf(console.log)
+    })
   }
 
   ready (cb) {
@@ -98,7 +105,12 @@ class MetaDb {
         key: this.key,
         peerNames: this.peerNames,
         connections: Object.keys(this.connections),
-        config: this.config
+        config: this.config,
+        events: {
+          files: this.files.events,
+          peers: this.peers.events,
+          requests: this.requests.events
+        }
       })
     })
   }
