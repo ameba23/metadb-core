@@ -3,14 +3,12 @@ const pull = require('pull-stream')
 const chalk = require('chalk')
 const path = require('path')
 const glob = require('glob')
-const fileType = require('file-type')
 const extract = require('metadata-extract')
 
 const ignore = require('./ignore.js')
 const { sha256 } = require('./crypto')
 const { readableBytes } = require('./util')
 const { isAddFile } = require('./schemas') // TODO
-
 
 const SCHEMAVERSION = '1.0.0'
 
@@ -77,10 +75,11 @@ module.exports = function indexKappa (metadb) {
                 feedStream.on('end', () => {
                   if (!duplicate) {
                     newEntry.timestamp = Date.now()
+                    // if (!isAddFile(newEntry)) return cb(error...)
                     metadb.localFeed.append(newEntry, (err, seq) => {
                       if (err) throw err
                       log('Data was appended as entry #' + seq)
-                      highestSeq = seq
+                      // highestSeq = seq
                       dataAdded += 1
                       metadb.sharedb.put(hash, path.join(dir, file), (err) => {
                         if (err) return cb(err)
@@ -99,13 +98,14 @@ module.exports = function indexKappa (metadb) {
             log('Feed key ', chalk.green(metadb.localFeed.key.toString('hex')))
             log('Number of files parsed: ', chalk.green(datas.length))
             log('Number of metadata added: ', chalk.green(dataAdded))
-            if (dataAdded < 1) return callback()
-            metadb.loadConfig((err) => {
-              if (err) return callback(err)
-              metadb.config.shares[highestSeq] = path.resolve(dir)
-              log(`added shares sequence numbers ${chalk.green(lowestSeq)} to ${chalk.green(highestSeq)}`)
-              metadb.writeConfig(callback)
-            })
+            callback()
+            // if (dataAdded < 1) return callback()
+            // metadb.loadConfig((err) => {
+            //   if (err) return callback(err)
+            //   metadb.config.shares[highestSeq] = path.resolve(dir)
+            //   log(`added shares sequence numbers ${chalk.green(lowestSeq)} to ${chalk.green(highestSeq)}`)
+            //   metadb.writeConfig(callback)
+            // })
           })
         )
       })

@@ -34,6 +34,7 @@ class MetaDb {
     this.storage = opts.path || path.join(os.homedir(), '.metadb')
     mkdirp.sync(this.storage)
     this.kappaPrivate = KappaPrivate()
+    this.isTest = opts.test
     this.downloadPath = opts.test
       ? path.join(this.storage, 'downloads')
       : path.join(this.storage, 'downloads') // os.homedir(), 'Downloads' ?
@@ -70,8 +71,15 @@ class MetaDb {
     this.files.events.on('update', () => {})
     this.peers.events.on('update', () => {})
     this.requests.events.on('update', () => {
-      this.query.processRequestsFromOthers(console.log)
-      this.query.processRequestsFromSelf(console.log)
+      // TODO
+      this.query.processRequestsFromOthers((err, networks) => {
+        if (err) console.log(err)
+        console.log('networks from uploads', networks)
+      })
+      this.query.processRequestsFromSelf((err, networks) => {
+        if (err) console.log(err)
+        console.log('networks from downloads', networks)
+      })
     })
   }
 
@@ -100,7 +108,6 @@ class MetaDb {
   getSettings (cb) {
     if (!this.indexesReady) this.buildIndexes(this.getSettings(cb))
     this.query.peers(() => {
-      // this.requestReply(cb)
       cb(null, {
         key: this.key,
         peerNames: this.peerNames,
@@ -113,6 +120,17 @@ class MetaDb {
         }
       })
     })
+  }
+
+  setSettings (settings, cb) {
+    if (settings.name) {
+      this.publish.about(settings.name, done)
+    }
+    const self = this
+    function done (err) {
+      if (err) return cb(err)
+      self.getSettings(cb)
+    }
   }
 
   indexFiles (dir, cb) { return IndexFiles(this)(dir, cb) }

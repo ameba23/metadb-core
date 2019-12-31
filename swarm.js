@@ -18,7 +18,7 @@ module.exports = function (metadb) {
     if (!key) return cb(null, new Error('No topic given'))
     if (key === '') key = DEFAULT_TOPIC
     metadb.connections[key] = _swarm(key)
-    console.log(Object.keys(metadb.connections))
+    // console.log(Object.keys(metadb.connections))
     if (cb) cb(null, Object.keys(metadb.connections))
   }
 

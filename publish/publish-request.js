@@ -17,11 +17,11 @@ module.exports = function (metadb) {
 
     pull(
       pull.values(files),
-      pull.asyncMap(metadb.core.api.files.get),
+      pull.asyncMap(metadb.files.get),
       pull.map(file => file.holders),
       pull.collect((err, recipients) => {
         if (err) return callback(err)
-        recipients.push(metadb.key.toString('hex'))
+        recipients.push(metadb.keyHex)
         recipients = uniq(recipients.flat())
         if (recipients.length > 7) callback(new Error('More than 7 recipients')) // TODO publish multiple messages
         const msg = {
@@ -32,6 +32,7 @@ module.exports = function (metadb) {
           recipients
           // recipients: recipients.map(recipient => recipient.toString('hex'))
         }
+        // TODO check we didnt already publish a similar request message (files and recps)
         metadb.localFeed.append(msg, callback)
       })
     )

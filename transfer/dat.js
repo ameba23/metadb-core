@@ -18,7 +18,10 @@ function publish (files, baseDir, callback) {
       // TODO: with many files, we will loose the dir structure by doing path.basename
       // if we have at least 2 files with a common portion of their path, we should break
       // at the common part
-      fs.symlink(file, path.join(datPath, path.basename(file)), cb)
+      fs.symlink(file, path.join(datPath, path.basename(file)), (err) => {
+        // if (err && err.code === 'EEXIST') { return cb() }
+        cb(err)
+      })
     }),
     pull.collect((err, done) => {
       if (err) return callback(err)
@@ -26,7 +29,8 @@ function publish (files, baseDir, callback) {
         if (err) return callback(err)
         const progress = dat.importFiles(datPath, (err) => {
           if (err) return callback(err)
-          const datNetwork = dat.joinNetwork()
+          // const datNetwork = dat.joinNetwork()
+          const datNetwork = false
           log('Finished importing')
           log('Archive size:', dat.archive.content.byteLength)
           const link = 'dat://' + dat.key.toString('hex')
@@ -47,12 +51,12 @@ function download (link, downloadPath, callback) {
   // TODO isHexString(link, 32) if not, remove the trailing path, open with sparse: true, and do archive.readFile
   Dat(downloadPath, { key: Buffer.from(link, 'hex') }, (err, dat) => {
     if (err) return callback(err)
-    dat.joinNetwork((err) => {
-      if (err) return callback(err)
-      if (!dat.network.connected || !dat.network.connecting) {
-        // TODO: Warn that the peer is not online
-      }
+    // dat.joinNetwork((err) => {
+      // if (err) return callback(err)
+      // if (!dat.network.connected || !dat.network.connecting) {
+      //   // TODO: Warn that the peer is not online
+      // }
       callback(null, dat)
-    })
+    // })
   })
 }

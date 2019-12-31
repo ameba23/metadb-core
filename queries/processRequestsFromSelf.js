@@ -15,8 +15,7 @@ module.exports = function (metadb) {
             if (!reply.closed) {
               download(reply.link, metadb.downloadPath, (err, network) => {
                 if (err) return cb2(err)
-                console.log(network)
-                metadb.pendingDownloads.push(network) // TODO somehow check its not already there
+                // metadb.pendingDownloads.push(network) // TODO somehow check its not already there
                 cb2(null, network)
               })
             }
@@ -24,7 +23,10 @@ module.exports = function (metadb) {
           pull.collect(cb)
         )
       }),
-      pull.collect(callback)
+      pull.collect((err, networks) => {
+        if (err) return callback(err)
+        callback(null, networks.flat())
+      })
     )
   }
 }

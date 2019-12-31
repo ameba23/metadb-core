@@ -132,7 +132,7 @@ function processCommand () {
     }, (argv) => {
       metadb.ready(() => {
         metadb.buildIndexes(() => {
-          pullback(metadb.query.peers())
+          metadb.query.peers(callback)
         })
       })
     })

@@ -41,18 +41,24 @@ test('request and reply, 2 actors', t => {
               t.error(err, 'no err on publishing request')
               replicate(metadbs[0], metadbs[1], (err) => {
                 t.error(err, 'No error on replicate')
-                metadbs[1].buildIndexes(() => {
-                  metadbs[1].query.processRequestsFromOthers((err, successes) => {
-                    t.error(err, 'requests processed without error')
-                    t.equal(successes.length, 1, 'returns one element')
-                    t.equal(successes[0], true, 'returns success')
+                pull(
+                  metadbs[1].query.requestsFromOthers(),
+                  pull.collect((err, requests) => {
+                    t.error(err, 'requests queried without error')
+                    t.equal(requests.length, 1, 'returns one element')
                     replicate(metadbs[0], metadbs[1], (err) => {
                       t.error(err, 'No error on replicate')
-
-                      t.end()
+                      pull(
+                        metadbs[0].query.requestsFromSelf(),
+                        pull.collect((err, requests) => {
+                          t.error(err, 'No error on query requests from self')
+                          console.log(requests)
+                          t.end()
+                        })
+                      )
                     })
                   })
-                })
+                )
               })
             })
           })

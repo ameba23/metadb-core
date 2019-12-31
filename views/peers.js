@@ -16,6 +16,7 @@ module.exports = function (level) {
         if (!sanitize(msg)) return
         pending++
         // TODO check timestamps to make sure we get newest
+        // TODO only push if its not already there
         ops.push({
           type: 'put',
           key: msg.key + '!name',

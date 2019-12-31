@@ -11,8 +11,8 @@ module.exports = function Query (metadb) {
 
     ownFiles: () => {
       return pull(
-        query.filesByPeer(metadb.keyHex),
-        pull.map(f => { console.log(f); return f })
+        query.filesByPeer(metadb.keyHex)
+        // pull.map(f => { console.log(f); return f })
         // pull.asyncMap((file, cb) => {
         //   metadb.sharedb.get(file.sha256, (err, path) => {
         // })
@@ -56,19 +56,23 @@ module.exports = function Query (metadb) {
     },
 
     peers: function (callback) {
+      const peers = metadb.core.feeds().map(f => f.key.toString('hex'))
+
       metadb.files.count(null, (err, counters) => {
         if (err) return callback(err)
         pull(
-          pull.values(Object.keys(counters.peerFiles)),
+          pull.values(peers),
           pull.map((peerKey) => {
+            const numberFiles = counters.peerFiles ? counters.peerFiles[peerKey] : undefined
             return {
               feedId: peerKey,
-              numberFiles: counters.peerFiles[peerKey]
+              numberFiles
             }
           }),
           pull.asyncMap((peerObj, cb) => {
             metadb.peers.getName(peerObj.feedId, (err, name) => {
               if (!err) peerObj.name = name
+              metadb.peerNames[peerObj.feedId] = name
               return cb(null, peerObj)
             })
           }),

@@ -18,11 +18,16 @@ module.exports = function (level) {
         delete msg.value.version
         if (msg.value.type === 'request') {
           delete msg.value.type
-          // TODO: should we get first to include replies from before?
-          ops.push({
-            type: 'put',
-            key: msg.key + '@' + msg.seq,
-            value: msg.value
+          const dbKey = msg.key + '@' + msg.seq
+          level.get(dbKey, (err) => {
+            if (err) {
+              ops.push({
+                type: 'put',
+                key: msg.key + '@' + msg.seq,
+                value: msg.value
+              })
+            }
+            if (!--pending) done()
           })
         } else {
           level.get(msg.value.branch, (err, requestMsg) => {
@@ -30,17 +35,18 @@ module.exports = function (level) {
             delete msg.value.type
             msg.value.from = msg.key
             requestMsg.replies = requestMsg.replies || []
-            requestMsg.replies.push(msg.value)
-
-            ops.push({
-              type: 'put',
-              key: msg.key + '@' + msg.seq,
-              value: requestMsg
-            })
+            // TODO should be testing for msgSeq, not link, but we need to first include it in the reply msg
+            if (!requestMsg.replies.find(repMsg => (repMsg.link === msg.value.link))) {
+              requestMsg.replies.push(msg.value)
+              ops.push({
+                type: 'put',
+                key: msg.value.branch,
+                value: requestMsg
+              })
+            }
+            if (!--pending) done()
           })
         }
-
-        if (!--pending) done()
       })
       if (!pending) done()
 
@@ -76,6 +82,17 @@ module.exports = function (level) {
           // TODO
           gt: feedId,
           lt: feedId
+        })
+      },
+      markAsRead: function (core, msgSeq, cb) {
+        level.get(msgSeq, (err, request) => {
+          if (err) return cb(err)
+          if (request.read) return cb()
+          request.read = true
+          level.put(msgSeq, request, (err) => {
+            if (err) return cb(err)
+            cb()
+          })
         })
       },
       events: events
