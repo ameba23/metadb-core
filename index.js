@@ -109,7 +109,7 @@ class MetaDb {
     if (!this.indexesReady) this.buildIndexes(this.getSettings(cb))
     this.query.peers(() => {
       cb(null, {
-        key: this.key,
+        key: this.keyHex,
         peerNames: this.peerNames,
         connections: Object.keys(this.connections),
         config: this.config,
