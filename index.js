@@ -31,7 +31,7 @@ module.exports = (opts) => new MetaDb(opts)
 class MetaDb {
   constructor (opts = {}) {
     this.indexesReady = false
-    this.storage = opts.path || path.join(homeDir, '.metadb')
+    this.storage = opts.storage || path.join(homeDir, '.metadb')
     mkdirp.sync(this.storage)
     this.kappaPrivate = KappaPrivate()
     this.isTest = opts.test
@@ -64,6 +64,7 @@ class MetaDb {
     ))
 
     this.sharedb = sublevel(this.db, SHARES)
+    this.shareTotals = sublevel(this.db, 'ST')
     this.files = this.core.api.files
     this.peers = this.core.api.peers
     this.requests = this.core.api.requests
@@ -104,7 +105,6 @@ class MetaDb {
     })
   }
 
-  // readMessages (cb) {
   getSettings (cb) {
     if (!this.indexesReady) this.buildIndexes(this.getSettings(cb))
     this.query.peers(() => {

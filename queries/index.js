@@ -11,11 +11,14 @@ module.exports = function Query (metadb) {
 
     ownFiles: () => {
       return pull(
-        query.filesByPeer(metadb.keyHex)
-        // pull.map(f => { console.log(f); return f })
-        // pull.asyncMap((file, cb) => {
-        //   metadb.sharedb.get(file.sha256, (err, path) => {
-        // })
+        query.filesByPeer(metadb.keyHex),
+        pull.asyncMap((file, cb) => {
+          metadb.sharedb.get(file.sha256, (err, filename) => {
+            if (err) return cb(err)
+            file.filename = filename
+            cb(null, file)
+          })
+        })
       )
     },
 
