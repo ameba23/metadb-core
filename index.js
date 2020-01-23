@@ -4,7 +4,7 @@ const mkdirp = require('mkdirp')
 const KappaPrivate = require('kappa-private')
 const level = require('level') // -mem ?
 const sublevel = require('subleveldown')
-const os = require('os')
+const homeDir = require('os').homedir()
 // const thunky = require('thunky')
 
 const createFilesView = require('./views/files')
@@ -31,7 +31,7 @@ module.exports = (opts) => new MetaDb(opts)
 class MetaDb {
   constructor (opts = {}) {
     this.indexesReady = false
-    this.storage = opts.path || path.join(os.homedir(), '.metadb')
+    this.storage = opts.path || path.join(homeDir, '.metadb')
     mkdirp.sync(this.storage)
     this.kappaPrivate = KappaPrivate()
     this.isTest = opts.test
@@ -113,6 +113,7 @@ class MetaDb {
         peerNames: this.peerNames,
         connections: Object.keys(this.connections),
         config: this.config,
+        homeDir,
         events: {
           files: this.files.events,
           peers: this.peers.events,

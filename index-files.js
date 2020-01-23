@@ -98,7 +98,10 @@ module.exports = function indexKappa (metadb) {
             log('Feed key ', chalk.green(metadb.localFeed.key.toString('hex')))
             log('Number of files parsed: ', chalk.green(datas.length))
             log('Number of metadata added: ', chalk.green(dataAdded))
-            callback()
+            callback(null, {
+              filesParsed: datas.length,
+              metadataAdded: dataAdded
+            })
             // if (dataAdded < 1) return callback()
             // metadb.loadConfig((err) => {
             //   if (err) return callback(err)
