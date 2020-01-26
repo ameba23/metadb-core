@@ -2,7 +2,7 @@
 const yargs = require('yargs')
 const pull = require('pull-stream')
 
-const metadb = require('.')()
+const metadb = require('.')({ storage: yargs.argv.storage })
 
 const yargsargs = processCommand()
 if (!yargsargs._[0]) yargs.showHelp()
@@ -145,7 +145,9 @@ function processCommand () {
           type: 'string'
         })
     }, (argv) => {
-      metadb.swarm(argv.key, callback)
+      metadb.ready(() => {
+        metadb.swarm(argv.key, callback)
+      })
     })
 
     .command('disconnect', 'disconnect from other peers', (yargs) => {

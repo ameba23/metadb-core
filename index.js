@@ -47,6 +47,7 @@ class MetaDb {
     this.connections = {}
     this.query = Query(this)
     this.publish = Publish(this)
+    this.connectedPeers = []
 
     this.core = kappa(
       DB(this.storage),
@@ -90,6 +91,10 @@ class MetaDb {
       feed.ready(() => {
         this.localFeed = feed
         this.key = feed.key
+        this.keypair = {
+          publicKey: feed.key,
+          secretKey: feed.secretKey
+        }
         this.keyHex = feed.key.toString('hex')
         this.kappaPrivate.secretKey = feed.secretKey
         this.loadConfig(cb)
