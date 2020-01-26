@@ -1,8 +1,9 @@
 const LineReader = require('readline')
 const fs = require('fs')
 const minimatch = require('minimatch')
+const path = require('path')
 
-const filename = './metadb-ignore'
+const filename = path.join(path.resolve(__dirname), './metadb-ignore')
 const ignore = []
 var ready = false
 
