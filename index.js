@@ -31,7 +31,7 @@ module.exports = (opts) => new MetaDb(opts)
 class MetaDb {
   constructor (opts = {}) {
     this.indexesReady = false
-    this.storage = opts.path || path.join(os.homedir(), '.metadb')
+    this.storage = opts.storage || path.join(os.homedir(), '.metadb')
     mkdirp.sync(this.storage)
     this.kappaPrivate = KappaPrivate()
     this.isTest = opts.test
@@ -47,6 +47,7 @@ class MetaDb {
     this.connections = {}
     this.query = Query(this)
     this.publish = Publish(this)
+    this.connectedPeers = []
 
     this.core = kappa(
       DB(this.storage),
@@ -89,6 +90,10 @@ class MetaDb {
       feed.ready(() => {
         this.localFeed = feed
         this.key = feed.key
+        this.keypair = {
+          publicKey: feed.key,
+          secretKey: feed.secretKey
+        }
         this.keyHex = feed.key.toString('hex')
         this.kappaPrivate.secretKey = feed.secretKey
         this.loadConfig(cb)
