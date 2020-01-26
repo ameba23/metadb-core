@@ -1,5 +1,6 @@
 const sodium = require('sodium-native')
 const assert = require('assert')
+const GENERIC_HASH_BYTES = sodium.crypto_generichash_BYTES
 
 function sha256 (msg) {
   var hash = sodium.sodium_malloc(sodium.crypto_hash_sha256_BYTES)
@@ -8,7 +9,7 @@ function sha256 (msg) {
 }
 
 function genericHash (msg, key) {
-  const hash = sodium.sodium_malloc(sodium.crypto_generichash_BYTES)
+  const hash = sodium.sodium_malloc(GENERIC_HASH_BYTES)
   sodium.crypto_generichash(hash, msg, key)
   return hash
 }
@@ -23,5 +24,5 @@ function keyedHash (msg, key) {
   return genericHash(msg, key)
 }
 module.exports = {
-  sha256, keyedHash
+  sha256, keyedHash, GENERIC_HASH_BYTES
 }
