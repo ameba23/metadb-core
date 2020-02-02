@@ -118,6 +118,7 @@ class MetaDb {
         peerNames: this.peerNames,
         connections: Object.keys(this.connections),
         config: this.config,
+        connectedPeers: this.connectedPeers,
         homeDir,
         events: {
           files: this.files.events,

@@ -3,10 +3,15 @@ const merge = require('deepmerge')
 const pullLevel = require('pull-level')
 const pull = require('pull-stream')
 const { isAddFile } = require('../schemas')
+const { uniq } = require('../util')
 
 const HASH = 'h!'
 const PATH = 'p!'
 const HOLDER = 'o!'
+
+function arrayMerge (destArray, sourceArray) {
+  return uniq(destArray.concat(sourceArray))
+}
 
 module.exports = function (level) {
   const events = new EventEmitter()
@@ -25,7 +30,7 @@ module.exports = function (level) {
         let merged = msg.value
         level.get(HASH + msg.value.sha256, function (err, existingValue) {
           if (!(err && err.notFound)) {
-            merged = merge(existingValue, msg.value) // TODO: this will clobber old values
+            merged = merge(existingValue, msg.value, { arrayMerge }) // TODO: this will clobber old values
           }
 
           merged.holders = merged.holders || []

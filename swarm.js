@@ -45,18 +45,12 @@ module.exports = function (metadb) {
           })
         },
         onprotocol (protocol) {
-          console.log('onprotocol')
           metadb.core.replicate(isInitiator, { live: true, stream: protocol })
         }
       })
       socket.on('error', log)
     })
 
-    // swarm.on('disconnection', (socket, details) => {
-    //   if (details.peer) {
-    //     log(`disconnected from peer: ${details.peer.host}`)
-    //   }
-    // })
     return swarm
   }
 }
@@ -70,7 +64,7 @@ module.exports.unswarm = function (metadb) {
       metadb.connections[key].destroy()
       delete metadb.connections[key]
     }
-    console.log('unswarmed', Object.keys(metadb.connections))
+    log('unswarmed', Object.keys(metadb.connections))
     if (cb) cb(null, Object.keys(metadb.connections))
   }
 }
