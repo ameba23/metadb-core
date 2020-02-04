@@ -51,12 +51,12 @@ function download (link, downloadPath, callback) {
   // TODO isHexString(link, 32) if not, remove the trailing path, open with sparse: true, and do archive.readFile
   Dat(downloadPath, { key: Buffer.from(link, 'hex') }, (err, dat) => {
     if (err) return callback(err)
-    // dat.joinNetwork((err) => {
-      // if (err) return callback(err)
-      // if (!dat.network.connected || !dat.network.connecting) {
-      //   // TODO: Warn that the peer is not online
-      // }
+    dat.joinNetwork((err) => {
+      if (err) return callback(err)
+      if (!dat.network.connected || !dat.network.connecting) {
+        log('Download dat: it looks like no peers are currently online.')
+      }
       callback(null, dat)
-    // })
+    })
   })
 }
