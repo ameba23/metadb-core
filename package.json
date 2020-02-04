@@ -9,6 +9,7 @@
   "author": "ameba23",
   "license": "AGPL-3.0-only",
   "dependencies": {
+    "@hyperswarm/replicator": "^1.5.0",
     "chalk": "^2.4.2",
     "deepmerge": "^3.3.0",
     "file-type": "^12.4.0",
