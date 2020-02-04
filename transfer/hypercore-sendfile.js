@@ -25,6 +25,8 @@ function publish (files, baseDir, callback) {
 
 function download (link, downloadPath, callback) {
   const key = Buffer.from(link, 'hex') // TODO validation/processing
+  // if (link.slice(0, 6) === 'dat://') link = link.slice(6) // TODO get rid 
+  if (key.length !== 32) return callback(new Error('link is wrong length'))
   const feed = hypercore(ram, key)
   const swarm = replicator(feed)
   feed.on('peer-add', peer => {
