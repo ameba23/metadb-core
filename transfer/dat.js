@@ -29,8 +29,8 @@ function publish (files, baseDir, callback) {
         if (err) return callback(err)
         const progress = dat.importFiles(datPath, (err) => {
           if (err) return callback(err)
-          // const datNetwork = dat.joinNetwork()
-          const datNetwork = false
+          const datNetwork = dat.joinNetwork()
+          // const datNetwork = false
           log('Finished importing')
           log('Archive size:', dat.archive.content.byteLength)
           const link = 'dat://' + dat.key.toString('hex')
