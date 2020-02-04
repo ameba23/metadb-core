@@ -1,6 +1,6 @@
 const pull = require('pull-stream')
 const OwnFilesFromHashes = require('./own-files-from-hashes')
-const { publish } = require('../transfer/dat') // publishFiles
+const { publish } = require('../transfer/hypercore-sendfile') // publishFiles
 
 module.exports = function (metadb) {
   return function (callback) {

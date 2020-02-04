@@ -1,5 +1,5 @@
 const pull = require('pull-stream')
-const { download } = require('../transfer/dat') // publishFiles
+const { download } = require('../transfer/hypercore-sendfile') // publishFiles
 
 module.exports = function (metadb) {
   return function (callback) {
