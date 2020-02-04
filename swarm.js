@@ -36,7 +36,6 @@ module.exports = function (metadb) {
         onauthenticate (peerAuthKey, cb) {
           if (!metadb.connectedPeers.includes(peerAuthKey.toString('hex'))) metadb.connectedPeers.push(peerAuthKey.toString('hex'))
 
-          // TODO: associate this key with host, so that we can record when they disconnect
           log('New peer connected with key ', peerAuthKey.toString('hex'))
           cb(null, true)
           socket.on('close', () => {
@@ -45,7 +44,10 @@ module.exports = function (metadb) {
           })
         },
         onprotocol (protocol) {
-          metadb.core.replicate(isInitiator, { live: true, stream: protocol })
+          // metadb.core.replicate(isInitiator, { live: true, stream: protocol })
+          metadb.core.replicate(isInitiator, { live: true }).pipe(protocol)
+
+          // pump(protocol, metadb.core.replicate(isInitiator, { live: true }), protocol)
         }
       })
       socket.on('error', log)
