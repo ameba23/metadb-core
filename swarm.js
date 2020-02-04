@@ -29,27 +29,28 @@ module.exports = function (metadb) {
       // console.log('my metadb key ', metadb.keyHex)
       // console.log(swarm.connections)
       const isInitiator = !!details.client
-      const protocol = new Protocol(isInitiator)
-      pump(socket, protocol, socket)
-      auth(protocol, {
-        authKeyPair: metadb.keypair,
-        onauthenticate (peerAuthKey, cb) {
-          if (!metadb.connectedPeers.includes(peerAuthKey.toString('hex'))) metadb.connectedPeers.push(peerAuthKey.toString('hex'))
-
-          log('New peer connected with key ', peerAuthKey.toString('hex'))
-          cb(null, true)
-          socket.on('close', () => {
-            log('Peer has disconnected ', peerAuthKey.toString('hex'))
-            metadb.connectedPeers = metadb.connectedPeers.filter(p => p !== peerAuthKey.toString('hex'))
-          })
-        },
-        onprotocol (protocol) {
-          // metadb.core.replicate(isInitiator, { live: true, stream: protocol })
-          metadb.core.replicate(isInitiator, { live: true }).pipe(protocol)
-
-          // pump(protocol, metadb.core.replicate(isInitiator, { live: true }), protocol)
-        }
-      })
+      pump(socket, metadb.core.replicate(isInitiator, { live: true }), socket)
+      // const protocol = new Protocol(isInitiator)
+      // pump(socket, protocol, socket)
+      // auth(protocol, {
+      //   authKeyPair: metadb.keypair,
+      //   onauthenticate (peerAuthKey, cb) {
+      //     if (!metadb.connectedPeers.includes(peerAuthKey.toString('hex'))) metadb.connectedPeers.push(peerAuthKey.toString('hex'))
+      //
+      //     log('New peer connected with key ', peerAuthKey.toString('hex'))
+      //     cb(null, true)
+      //     socket.on('close', () => {
+      //       log('Peer has disconnected ', peerAuthKey.toString('hex'))
+      //       metadb.connectedPeers = metadb.connectedPeers.filter(p => p !== peerAuthKey.toString('hex'))
+      //     })
+      //   },
+      //   onprotocol (protocol) {
+      //     // metadb.core.replicate(isInitiator, { live: true, stream: protocol })
+      //     metadb.core.replicate(isInitiator, { live: true }).pipe(protocol)
+      //
+      //     // pump(protocol, metadb.core.replicate(isInitiator, { live: true }), protocol)
+      //   }
+      // })
       socket.on('error', log)
     })
 
