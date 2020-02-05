@@ -29,8 +29,7 @@ module.exports = function (metadb) {
           version: VERSION,
           files,
           timestamp: Date.now(),
-          recipients
-          // recipients: recipients.map(recipient => recipient.toString('hex'))
+          recipients: recipients.map(recipient => recipient.toString('hex'))
         }
         // TODO check we didnt already publish a similar request message (files and recps)
         metadb.localFeed.append(msg, callback)
