@@ -13,7 +13,7 @@ const names = ['alice', 'bob']
 test('request and reply, 2 actors', t => {
   const metadbs = []
   async.each(names, (name, callback) => {
-    var metadb = Metadb({ path: tmpDir().name, test: true })
+    var metadb = Metadb({ storage: tmpDir().name, test: true })
     metadb.ready(() => {
       metadb.publish.about(name, (err, seq) => {
         t.error(err, 'does not throw err')
@@ -69,8 +69,8 @@ test('request and reply, 2 actors', t => {
 })
 
 function replicate (db1, db2, cb) {
-  var s = db1.core.replicate({ live: false })
-  var d = db2.core.replicate({ live: false })
+  var s = db1.core.replicate(true, { live: false })
+  var d = db2.core.replicate(false, { live: false })
 
   s.pipe(d).pipe(s)
   s.on('error', cb)

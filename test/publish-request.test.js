@@ -8,7 +8,7 @@ const files = ['843b5593e6e1f23daeefb66fa5e49ba7800f5a4b84c03c91fac7f18fb2a3663f
 const pathToIndex = path.join(path.resolve(__dirname), './test-media')
 
 test('publish a request message', t => {
-  var metadb = Metadb({ path: tmpDir().name })
+  var metadb = Metadb({ storage: tmpDir().name })
   metadb.ready(() => {
     metadb.indexFiles(pathToIndex, (err) => {
       t.error(err, 'does not throw err')
