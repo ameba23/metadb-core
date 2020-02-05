@@ -23,7 +23,8 @@ module.exports = function (metadb) {
         if (err) return callback(err)
         recipients.push(metadb.keyHex)
         recipients = uniq(recipients.flat())
-        if (recipients.length > 7) callback(new Error('More than 7 recipients')) // TODO publish multiple messages
+        if ((recipients.length === 1) && (recipients[0] === metadb.keyHex)) return callback(new Error('cannot request to yourself'))
+        if (recipients.length > 7) return callback(new Error('More than 7 recipients')) // TODO publish multiple messages
         const msg = {
           type: 'request',
           version: VERSION,

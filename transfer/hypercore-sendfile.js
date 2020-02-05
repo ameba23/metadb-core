@@ -8,6 +8,7 @@ const log = console.log
 module.exports = { publish, download }
 
 function publish (files, baseDir, callback) {
+  console.log('published called', files)
   const feed = hypercoreIndexedFile(files[0], err => onfeed(err, feed))
 
   function onfeed (err, feed) {
@@ -20,6 +21,8 @@ function publish (files, baseDir, callback) {
     feed.on('peer-remove', peer => {
       log('peer removed')
     })
+    // TODO add a prefix.
+    callback(null, feed.key.toString('hex'), swarm)
   }
 }
 

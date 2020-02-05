@@ -33,6 +33,7 @@ module.exports = function (metadb) {
             const recipient = branch.split('@')[0]
             metadb.publish.reply(link, recipient, branch, (err, seq) => {
               if (err) return callback(err)
+              console.log('reply published', seq, link)
               // metadb.repliedTo.push(branch)
               // update index?
               cb(null, network) // null, network
