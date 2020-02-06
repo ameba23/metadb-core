@@ -32,11 +32,11 @@ function download (link, downloadPath, callback) {
   if (key.length !== 32) return callback(new Error('link is wrong length'))
   const feed = hypercore(ram, key)
   const swarm = replicator(feed)
-  feed.on('peer-add', peer => {
+  feed.on('peer-add', (peer) => {
     log('new peer, starting sync')
   })
   const target = fs.createWriteStream(downloadPath)
 
   feed.createReadStream({ live: true }).pipe(target)
-  feed.on('sync', callback(null, true))
+  feed.on('sync', () => { callback(null, true) })
 }
