@@ -23,7 +23,11 @@ function publish (files, baseDir, hash, callback) {
 function upload (file, hash, callback) {
   const keypair = crypto.keypair(Buffer.from(hash, 'hex'))
   const options = { key: keypair.publicKey, secretKey: keypair.secretKey }
-  const feed = hypercoreIndexedFile(file, options, err => onfeed(err, feed))
+  // const feed = hypercoreIndexedFile(file, options, err => onfeed(err, feed))
+  const feed = hypercore(ram, options)
+  feed.append(Buffer.from('hello'), (err) => {
+    onfeed(err, feed)
+  })
 
   function onfeed (err, feed) {
     if (err) return callback(err)
@@ -53,21 +57,24 @@ function download (link, downloadPath, callback) {
   const feed = hypercore(ram, key)
   const swarm = replicator(feed)
   swarm.on('connection', (socket, details) => {
-    console.log(JSON.stringify(details, null, 4))
+    if (details.peer) console.log(details.peer.host)
   })
   feed.on('peer-add', (peer) => {
     log('[download] new peer, starting sync')
   })
   feed.on('peer-open', peer => {
-    log('[publish] peer channel open')
+    log('[download] peer channel open')
   })
   feed.on('peer-remove', peer => {
     log('[download] peer removed')
+  })
+  feed.on('close', peer => {
+    log('[download] feed closed')
   })
   // TODO filename
   const target = fs.createWriteStream(path.join(downloadPath, link))
 
   feed.createReadStream({ live: true }).pipe(target)
   feed.on('sync', () => { log('File downlowded') })
-  callback(null, true) // swarm
+  callback(null, swarm)
 }
