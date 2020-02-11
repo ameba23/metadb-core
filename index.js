@@ -48,6 +48,8 @@ class MetaDb {
     this.query = Query(this)
     this.publish = Publish(this)
     this.connectedPeers = []
+    this.activeDownloads = []
+    this.activeUploads = []
 
     this.core = kappa(
       DB(this.storage),

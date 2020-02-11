@@ -23,6 +23,19 @@ function keyedHash (msg, key) {
   assert(Buffer.isBuffer(msg), 'msg must be a buffer or a string')
   return genericHash(msg, key)
 }
+
+function keypair (seed) {
+  const publicKey = sodium.sodium_malloc(sodium.crypto_sign_PUBLICKEYBYTES)
+  const secretKey = sodium.sodium_malloc(sodium.crypto_sign_SECRETKEYBYTES)
+
+  if (seed) sodium.crypto_sign_seed_keypair(publicKey, secretKey, seed)
+  else sodium.crypto_sign_keypair(publicKey, secretKey)
+
+  return {
+    publicKey,
+    secretKey
+  }
+}
 module.exports = {
-  sha256, keyedHash, GENERIC_HASH_BYTES
+  sha256, keyedHash, GENERIC_HASH_BYTES, keypair
 }

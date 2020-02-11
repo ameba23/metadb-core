@@ -27,7 +27,7 @@ module.exports = function (metadb) {
             // publish a reply with an error message?
             return cb() // err?
           }
-          publish(filePaths, metadb.storage, (err, link, network) => {
+          publish(filePaths, metadb.storage, request.files[0], (err, link, network) => {
             if (err) return cb(err) // also publish a sorry message?
             const branch = request.msgSeq
             const recipient = branch.split('@')[0]
@@ -36,6 +36,7 @@ module.exports = function (metadb) {
               console.log('reply published', seq, link)
               // metadb.repliedTo.push(branch)
               // update index?
+              metadb.activeDownloads.push(link)
               cb(null, network) // null, network
             })
           })
