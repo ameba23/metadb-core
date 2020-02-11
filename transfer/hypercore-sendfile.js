@@ -24,10 +24,10 @@ function publish (files, baseDir, callback) {
     const swarm = replicator(feed)
     log('replicating ' + feed.key.toString('hex'))
     feed.on('peer-add', peer => {
-      log('new peer, starting sync')
+      log('[publish] new peer, starting sync')
     })
     feed.on('peer-remove', peer => {
-      log('peer removed')
+      log('[publish] peer removed')
     })
     // TODO add a prefix.
     callback(null, feed.key.toString('hex'), swarm)
@@ -43,10 +43,10 @@ function download (link, downloadPath, callback) {
   const feed = hypercore(ram, key)
   const swarm = replicator(feed)
   feed.on('peer-add', (peer) => {
-    log('new peer, starting sync')
+    log('[download] new peer, starting sync')
   })
   feed.on('peer-remove', peer => {
-    log('peer removed')
+    log('[download] peer removed')
   })
   // TODO filename
   const target = fs.createWriteStream(path.join(downloadPath, link))
