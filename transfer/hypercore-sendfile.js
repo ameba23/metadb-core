@@ -23,13 +23,13 @@ function publish (files, baseDir, hash, callback) {
 function upload (file, hash, callback) {
   const keypair = crypto.keypair(Buffer.from(hash, 'hex'))
   const options = { key: keypair.publicKey, secretKey: keypair.secretKey }
-  // const feed = hypercoreIndexedFile(file, options, err => onfeed(err, feed))
-  const feed = hypercore(ram, options)
-  feed.append(Buffer.from('hello'), (err) => {
-    onfeed(err, feed)
-  })
+  // const feed = hypercoreIndexedFile(file, options, err => onfeed(err))
 
-  function onfeed (err, feed) {
+  const feed = hypercore(ram, options)
+  fs.createReadStream(file).pipe(feed.createWriteStream())
+  onfeed()
+
+  function onfeed (err) {
     if (err) return callback(err)
     const swarm = replicator(feed)
     log('replicating ' + feed.key.toString('hex'))
