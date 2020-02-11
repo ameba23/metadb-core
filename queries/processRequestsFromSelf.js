@@ -13,6 +13,7 @@ module.exports = function (metadb) {
           pull.values(request.replies),
           pull.asyncMap((reply, cb2) => {
             if (!reply.closed) {
+              // hash to filename / folder
               download(reply.link, metadb.downloadPath, (err, network) => {
                 if (err) return cb2(err)
                 // metadb.pendingDownloads.push(network) // TODO somehow check its not already there
@@ -25,7 +26,7 @@ module.exports = function (metadb) {
       }),
       pull.collect((err, networks) => {
         if (err) return callback(err)
-        callback(null, networks.flat())
+        callback(null, networks.flat().filter(Boolean))
       })
     )
   }
