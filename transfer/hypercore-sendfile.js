@@ -1,7 +1,9 @@
-const hypercoreIndexedFile = require('hypercore-indexed-file')
+// const hypercoreIndexedFile = require('hypercore-indexed-file')
 const replicator = require('@hyperswarm/replicator')
 const hypercore = require('hypercore')
 const ram = require('random-access-memory')
+// const raf = require('random-access-file')
+// const tar = require('tar-fs')
 const fs = require('fs')
 const path = require('path')
 const log = console.log
@@ -22,10 +24,11 @@ function publish (files, baseDir, hash, callback) {
 
 function upload (file, hash, callback) {
   const keypair = crypto.keypair(Buffer.from(hash, 'hex'))
-  const options = { key: keypair.publicKey, secretKey: keypair.secretKey }
+  const options = { key: keypair.publicKey, secretKey: keypair.secretKey, indexing: true }
   // const feed = hypercoreIndexedFile(file, options, err => onfeed(err))
 
   const feed = hypercore(ram, options)
+  // tar.pack(baseDir, { entries: files}).pipe(feed.createWriteStream())
   fs.createReadStream(file).pipe(feed.createWriteStream())
   onfeed()
 
@@ -73,8 +76,21 @@ function download (link, downloadPath, callback) {
   })
   // TODO filename
   const target = fs.createWriteStream(path.join(downloadPath, link))
+  // const target = tar.extract(downloadPath)
+
 
   feed.createReadStream({ live: true }).pipe(target)
   feed.on('sync', () => { log('File downlowded') })
   callback(null, swarm)
 }
+
+// adapted from hypercore-indexed-file
+// function createStorage (file) {
+//   return (filename) => {
+//     if (filename.endsWith('data')) {
+//       return raf(pathspec)
+//     } else {
+//       return ram(filename)
+//     }
+//   }
+// }
