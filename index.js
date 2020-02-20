@@ -99,7 +99,16 @@ class MetaDb {
         }
         this.keyHex = feed.key.toString('hex')
         this.kappaPrivate.secretKey = feed.secretKey
-        this.loadConfig(cb)
+        this.loadConfig((err) => {
+          if (err) return cb(err)
+          if (this.localFeed.length) return cb()
+          // if there are no messages in the feed, publish a header message
+          this.localFeed.append({
+            type: 'metadb-header',
+            version: '1.0.0',
+            timestamp: Date.now()
+          }, cb)
+        })
       })
     })
   }
@@ -121,12 +130,12 @@ class MetaDb {
         connections: Object.keys(this.connections),
         config: this.config,
         connectedPeers: this.connectedPeers,
-        homeDir,
-        events: {
-          files: this.files.events,
-          peers: this.peers.events,
-          requests: this.requests.events
-        }
+        homeDir
+        // events: {
+        //   files: this.files.events,
+        //   peers: this.peers.events,
+        //   requests: this.requests.events
+        // }
       })
     })
   }

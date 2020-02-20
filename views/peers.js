@@ -1,7 +1,7 @@
 const EventEmitter = require('events').EventEmitter
 const pullLevel = require('pull-level')
 const pull = require('pull-stream')
-const { isAbout } = require('../schemas')
+const { isAbout, isHeader } = require('../schemas')
 
 module.exports = function (level) {
   const events = new EventEmitter()
@@ -58,6 +58,6 @@ function sanitize (msg) {
   if (typeof msg !== 'object') return null
   if (typeof msg.value !== 'object') return null
   if (msg.value.type !== 'about') return null
-  if (!isAbout(msg.value)) return null
-  return msg
+  if (isAbout(msg.value) || isHeader(msg.value)) return msg
+  return null
 }

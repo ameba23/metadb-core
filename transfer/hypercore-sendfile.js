@@ -9,22 +9,23 @@ const path = require('path')
 const log = console.log
 const crypto = require('../crypto')
 
-const activeDownloads = []
-const activeUploads = []
+let activeDownloads = []
+let activeUploads = []
 
 module.exports = { publish, upload, download }
 
-function publish (files, baseDir, hash, callback) {
-  console.log('published called', files)
+function publish (fileObjects, baseDir, callback) {
+  console.log('published called', fileObjects)
 
-  if (activeUploads.includes(hash)) return callback(null, false)
-  activeUploads.push(hash) // TODO this should be a db write
-  upload(files[0], hash, callback)
+  if (activeUploads.includes(fileObjects[0].hash)) return callback(null, false)
+  activeUploads.push(fileObjects[0].hash) // TODO this should be a db write
+  upload(fileObjects[0], callback)
 }
 
-function upload (file, hash, callback) {
+function upload (fileObject, callback) {
+  const { file, hash } = fileObject
   const keypair = crypto.keypair(Buffer.from(hash, 'hex'))
-  const options = { key: keypair.publicKey, secretKey: keypair.secretKey, indexing: true }
+  const options = { key: keypair.publicKey, secretKey: keypair.secretKey }
   // const feed = hypercoreIndexedFile(file, options, err => onfeed(err))
 
   const feed = hypercore(ram, options)
@@ -44,6 +45,9 @@ function upload (file, hash, callback) {
     })
     feed.on('peer-remove', peer => {
       log('[publish] peer removed')
+    })
+    feed.on('sync', () => {
+      log('[publish] sync called!!!!')
     })
     // TODO add a prefix.
     callback(null, feed.key.toString('hex'), swarm)
@@ -78,9 +82,13 @@ function download (link, downloadPath, callback) {
   const target = fs.createWriteStream(path.join(downloadPath, link))
   // const target = tar.extract(downloadPath)
 
-
   feed.createReadStream({ live: true }).pipe(target)
-  feed.on('sync', () => { log('File downlowded') })
+  feed.on('sync', () => {
+    log('File downlowded')
+    swarm.leave(feed.discoveryKey)
+    activeDownloads = activeDownloads.filter(i => i !== link)
+    // TODO stop this being called again
+  })
   callback(null, swarm)
 }
 

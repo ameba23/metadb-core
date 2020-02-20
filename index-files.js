@@ -4,6 +4,7 @@ const chalk = require('chalk')
 const path = require('path')
 const glob = require('glob')
 const extract = require('metadata-extract')
+const homeDir = require('os').homedir()
 
 const ignore = require('./ignore.js')
 const { sha256 } = require('./crypto')
@@ -12,13 +13,14 @@ const { isAddFile } = require('./schemas') // TODO
 
 const SCHEMAVERSION = '1.0.0'
 
-module.exports = function indexKappa (metadb) {
+module.exports = function indexFiles (metadb) {
   return function (dir, opts = {}, callback) {
     if (!metadb.localFeed) return callback(new Error('No local feed, call ready()'))
     if (typeof opts === 'function' && !callback) {
       callback = opts
       opts = {}
     }
+    if (dir === homeDir) return callback(new Error('You may not index your entire home directory'))
     const log = opts.log || console.log
     ignore.setup(() => {
       var highestSeq

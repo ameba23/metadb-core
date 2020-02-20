@@ -114,4 +114,14 @@ const isAddFile = validator({
   }
 })
 
-module.exports = { isAbout, isRequest, isReply, isFileComment, isAddFile }
+const isHeader = validator({
+  $schema: 'http://json-schema.org/schema#',
+  type: 'object',
+  properties: {
+    type: type('metadb-header'),
+    version,
+    timestamp
+  }
+})
+
+module.exports = { isAbout, isRequest, isReply, isFileComment, isAddFile, isHeader }

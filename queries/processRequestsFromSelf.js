@@ -12,7 +12,7 @@ module.exports = function (metadb) {
         pull(
           pull.values(request.replies),
           pull.asyncMap((reply, cb2) => {
-            if (!reply.closed) {
+            if (!request.closed) {
               // hash to filename / folder
               download(reply.link, metadb.downloadPath, (err, network) => {
                 if (err) return cb2(err)

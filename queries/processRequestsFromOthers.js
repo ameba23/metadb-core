@@ -1,13 +1,16 @@
 const pull = require('pull-stream')
 const OwnFilesFromHashes = require('./own-files-from-hashes')
-const { publish } = require('../transfer/hypercore-sendfile') // publishFiles
+const { publish, upload } = require('../transfer/hypercore-sendfile') // publishFiles
 
 module.exports = function (metadb) {
   return function (callback) {
     // requests *TO* me:
     pull(
       metadb.query.requestsFromOthers(),
-      pull.filter(request => !request.read),
+      pull.filter(request => {
+        if (request.pendingDownloads && request.pendingDownloads.length) return true
+        return !request.read
+      }),
       pull.filter((request) => {
         // TODO explicity check that we are included as a recipient?
         return request.replies
@@ -20,28 +23,35 @@ module.exports = function (metadb) {
 
     function processRequest (request, cb) {
       console.log('------------------------------REQUEST:', request)
-      metadb.requests.markAsRead(request.msgSeq, (err) => {
-        if (err) return cb(err)
-        OwnFilesFromHashes(metadb)(request.files, (err, filePaths) => {
-          if (err || !filePaths.length) {
-            // publish a reply with an error message?
-            return cb() // err?
-          }
-          publish(filePaths, metadb.storage, request.files[0], (err, link, network) => {
-            if (err) return cb(err) // also publish a sorry message?
-            const branch = request.msgSeq
-            const recipient = branch.split('@')[0]
-            metadb.publish.reply(link, recipient, branch, (err, seq) => {
-              if (err) return callback(err)
-              console.log('reply published', seq, link)
-              // metadb.repliedTo.push(branch)
-              // update index?
-              metadb.activeDownloads.push(link)
-              cb(null, network) // null, network
+      if (request.pendingDownloads && request.pendingDownloads.length) {
+        upload(request.pendingDownloads[0], cb)
+      } else {
+        metadb.requests.update(request.msgSeq, { read: true }, (err) => {
+          if (err) return cb(err)
+          OwnFilesFromHashes(metadb)(request.files, (err, fileObjects) => {
+            if (err || !fileObjects.length) {
+              // publish a reply with an error message?
+              return cb() // err?
+            }
+            publish(fileObjects, metadb.storage, (err, link, network) => {
+              if (err) return cb(err) // also publish a sorry message?
+              const branch = request.msgSeq
+              const recipient = branch.split('@')[0]
+              metadb.publish.reply(link, recipient, branch, (err, seq) => {
+                if (err) return callback(err)
+                console.log('reply published', seq, link)
+                // metadb.repliedTo.push(branch)
+                // update index?
+                // metadb.activeDownloads.push(link)
+                metadb.requests.update(request.msgSeq, { pendingDownloads: fileObjects }, (err) => {
+                  if (err) return cb(err)
+                  cb(null, network) // null, network
+                })
+              })
             })
           })
         })
-      })
+      }
     }
   }
 }

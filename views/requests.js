@@ -84,11 +84,10 @@ module.exports = function (level) {
           lt: feedId
         })
       },
-      markAsRead: function (core, msgSeq, cb) {
+      update: function (core, msgSeq, updateObject, cb) {
         level.get(msgSeq, (err, request) => {
           if (err) return cb(err)
-          if (request.read) return cb()
-          request.read = true
+          Object.assign(request, updateObject)
           level.put(msgSeq, request, (err) => {
             if (err) return cb(err)
             cb()

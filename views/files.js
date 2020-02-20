@@ -8,6 +8,7 @@ const { uniq } = require('../util')
 const HASH = 'h!'
 const PATH = 'p!'
 const HOLDER = 'o!'
+const TIMESTAMP = 't!'
 
 function arrayMerge (destArray, sourceArray) {
   return uniq(destArray.concat(sourceArray))
@@ -51,6 +52,12 @@ module.exports = function (level) {
           ops.push({
             type: 'put',
             key: HOLDER + msg.key + '@' + msg.seq,
+            value: msg.value.sha256
+          })
+
+          ops.push({
+            type: 'put',
+            key: TIMESTAMP + msg.value.timestamp,
             value: msg.value.sha256
           })
 
@@ -149,6 +156,19 @@ module.exports = function (level) {
               files,
               peerFiles
             })
+          })
+        )
+      },
+      pullStreamByTimestamp: function (core, opts = {}) {
+        const subOpts = {
+          keys: false,
+          gte: TIMESTAMP,
+          lte: TIMESTAMP + '~'
+        }
+        return pull(
+          pullLevel.read(level, Object.assign(subOpts, opts)),
+          pull.asyncMap((hash, cb) => {
+            core.api.files.get(hash, cb)
           })
         )
       },
