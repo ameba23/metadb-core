@@ -34,7 +34,7 @@ function upload (fileObject, callback) {
 
   // const feed = hypercoreIndexedFile(file, options, err => onfeed(err))
 
-  const feed = hypercore(createStorage) // ram
+  const feed = hypercore(createStorage()) // ram
 
   // tar.pack(baseDir, { entries: files}).pipe(feed.createWriteStream())
 
