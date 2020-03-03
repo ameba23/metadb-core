@@ -34,14 +34,15 @@ function upload (fileObject, callback) {
 
   // const feed = hypercoreIndexedFile(file, options, err => onfeed(err))
 
-  const feed = hypercore(createStorage()) // ram
+  // const feed = hypercore(createStorage()) // ram
+  const feed = hypercore(ram)
 
   // tar.pack(baseDir, { entries: files}).pipe(feed.createWriteStream())
 
   fs.createReadStream(file).pipe(feed.createWriteStream())
-  onfeed()
+  feed.on('ready', onFeed)
 
-  function onfeed (err) {
+  function onFeed (err) {
     if (err) return callback(err)
     const swarm = replicator(feed)
     log('replicating ' + feed.key.toString('hex'))
