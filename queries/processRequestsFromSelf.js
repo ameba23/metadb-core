@@ -37,7 +37,7 @@ module.exports = function (metadb) {
                   } else {
                     log('downloaded file hash does not match requested!')
                   }
-                  metadb.requests.update(request.msgSeq, { closed: true })
+                  metadb.requests.update(request.msgSeq, { closed: true }, () => {})
                 }
               })
             }

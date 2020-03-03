@@ -108,7 +108,7 @@ function download (link, downloadPath, onDownloaded, callback) {
     log('[download] File downlowded')
     swarm.leave(feed.discoveryKey)
     activeDownloads = activeDownloads.filter(i => i !== link)
-    feed.close() // Not sure if this is needed
+    // feed.close() // Not sure if this is needed
 
     const hashToCheck = sodium.sodium_malloc(sodium.crypto_hash_sha256_BYTES)
     hashToCheckInstance.final(hashToCheck)
