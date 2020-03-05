@@ -9,6 +9,7 @@ const fs = require('fs')
 const path = require('path')
 const log = console.log
 const crypto = require('../crypto')
+const util = require('util') // temp
 
 let activeDownloads = []
 let activeUploads = []
@@ -36,10 +37,15 @@ function upload (fileObject, callback) {
 
   // const feed = hypercore(createStorage()) // ram
   const feed = hypercore(ram)
+  let uploadedBytes = 0
 
   // tar.pack(baseDir, { entries: files}).pipe(feed.createWriteStream())
 
-  fs.createReadStream(file).pipe(feed.createWriteStream())
+  const input = fs.createReadStream(file)
+  input.pipe(feed.createWriteStream())
+  input.on('end', () => {
+    log('[publish] finished reading file')
+  })
   feed.on('ready', onFeed)
 
   function onFeed (err) {
@@ -58,24 +64,38 @@ function upload (fileObject, callback) {
     feed.on('sync', () => {
       log('[publish] sync called!!!!') // TODO i dont think this ever gets called
     })
+    feed.on('replicating', () => {
+      log('[publish] replicating called!!!!!!')
+    })
+    feed.on('upload', (index, data) => {
+      log('[publish] upload called', index, data.length)
+      uploadedBytes += data.length
+      log('feed length is ', uploadedBytes)
+      // TODO should check against actual length of file
+      if (uploadedBytes === feed.byteLength) {
+        log('leaving swarm')
+        swarm.leave(feed.discoveryKey)
+        swarm.destroy()
+      }
+    })
+    // logEvents(feed, 'publishfeed')
     // TODO add a prefix.
     callback(null, feed.key.toString('hex'), swarm)
   }
 }
 
-function download (link, downloadPath, onDownloaded, callback) {
+function download (link, downloadPath, size, onDownloaded, callback) {
   if (activeDownloads.includes(link)) return callback(null, false)
   activeDownloads.push(link)
 
   const key = Buffer.from(link, 'hex') // TODO validation/processing
-
-  console.log('******download called*******', link)
   // if (link.slice(0, 6) === 'dat://') link = link.slice(6) // TODO get rid
   if (key.length !== 32) return callback(new Error('link is wrong length'))
-
+  let hashMarker = 0
   const hashToCheckInstance = sodium.crypto_hash_sha256_instance()
   const feed = hypercore(ram, key)
   const swarm = replicator(feed)
+  let downloadComplete = false
   swarm.on('connection', (socket, details) => {
     if (details.peer) console.log(details.peer.host)
   })
@@ -95,25 +115,34 @@ function download (link, downloadPath, onDownloaded, callback) {
   const target = fs.createWriteStream(downloadPath)
   // const target = tar.extract(downloadPath)
 
-  feed.createReadStream({ live: true }).pipe(target)
+  const source = feed.createReadStream({ live: true })
+  source.pipe(target)
 
-  feed.on('data', (chunk) => {
-    console.log('[download] chunk added') // temporary
-    // TODO should be able to verifiy parts of big files.
+  source.on('data', (chunk) => {
+    console.log('chunk added', chunk.length)
     hashToCheckInstance.update(chunk)
-    // could also stream to the front end here
+    hashMarker += 1
+    if (feed.byteLength === size) {
+      if (hashMarker === feed.length) downloaded()
+    }
   })
 
   feed.on('sync', () => {
+    console.log('size', feed.byteLength, size)
+    if (feed.byteLength === size) {
+      if (hashMarker === feed.length) downloaded()
+    }
+  })
+
+  function downloaded () {
     log('[download] File downlowded')
     swarm.leave(feed.discoveryKey)
-    activeDownloads = activeDownloads.filter(i => i !== link)
-    // feed.close() // Not sure if this is needed
-
+    swarm.destroy()
     const hashToCheck = sodium.sodium_malloc(sodium.crypto_hash_sha256_BYTES)
     hashToCheckInstance.final(hashToCheck)
-    onDownloaded(hashToCheck)
-  })
+    if (activeDownloads.includes(link)) onDownloaded(hashToCheck)
+    activeDownloads = activeDownloads.filter(i => i !== link)
+  }
 
   callback(null, swarm)
 }
@@ -130,3 +159,14 @@ function createStorage (file) {
   //   return ram(filename)
   // }
 }
+
+// for debugging
+function logEvents (emitter, name) {
+  let emit = emitter.emit
+  name = name ? `(${name}) ` : ''
+  emitter.emit = (...args) => {
+    console.log(`\x1b[33m${args[0]}\x1b[0m`, util.inspect(args.slice(1), { depth: 1, colors: true }))
+    emit.apply(emitter, args)
+  }
+}
+
