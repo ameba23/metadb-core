@@ -1,7 +1,7 @@
 // const hypercoreIndexedFile = require('hypercore-indexed-file')
-const replicator = require('@hyperswarm/replicator')
-const hypercore = require('hypercore')
-const ram = require('random-access-memory')
+const hyperswarm = require('hyperswarm')
+const pump = require('pump')
+const noisePeer = require('noise-peer')
 const sodium = require('sodium-native')
 // const raf = require('random-access-file')
 // const tar = require('tar-fs')
@@ -33,55 +33,43 @@ function upload (fileObject, callback) {
   // const keypair = crypto.keypair(Buffer.from(hash, 'hex'))
   // const optionsForHypercore = { key: keypair.publicKey, secretKey: keypair.secretKey }
 
-  // const feed = hypercoreIndexedFile(file, options, err => onfeed(err))
-
-  // const feed = hypercore(createStorage()) // ram
-  const feed = hypercore(ram)
   let uploadedBytes = 0
 
-  // tar.pack(baseDir, { entries: files}).pipe(feed.createWriteStream())
+  // const input = tar.pack(baseDir, { entries: files})
 
   const input = fs.createReadStream(file)
-  input.pipe(feed.createWriteStream())
-  input.on('end', () => {
-    log('[publish] finished reading file')
-  })
-  feed.on('ready', onFeed)
+  const swarm = hyperswarm()
 
-  function onFeed (err) {
-    if (err) return callback(err)
-    const swarm = replicator(feed)
-    log('replicating ' + feed.key.toString('hex'))
-    feed.on('peer-add', peer => {
-      log('[publish] new peer, starting sync')
+  // TODO:
+  const key = Buffer.alloc(32)
+  sodium.randombytes_buf(key)
+
+  swarm.join(key, { announce: true, lookup: true })
+  // this only allows one peer to connect
+  swarm.once('connection', function (connection, info) {
+    // pump(connection, input, connection)
+    const secureStream = noisePeer(connection, info.client)
+    // input.pipe(connection)
+    pump(secureStream, input, secureStream, (err) => {
+      if (err) throw err
     })
-    feed.on('peer-open', peer => {
-      log('[publish] peer channel open')
+    input.pipe(secureStream)
+
+    input.on('end', () => {
+      log('[publish] finished reading file')
+      log('leaving swarm')
+      // secureStream.end()
+      // swarm.leave(key)
+      // swarm.destroy()
     })
-    feed.on('peer-remove', peer => {
-      log('[publish] peer removed')
-    })
-    feed.on('sync', () => {
-      log('[publish] sync called!!!!') // TODO i dont think this ever gets called
-    })
-    feed.on('replicating', () => {
-      log('[publish] replicating called!!!!!!')
-    })
-    feed.on('upload', (index, data) => {
-      log('[publish] upload called', index, data.length)
-      uploadedBytes += data.length
-      log('feed length is ', uploadedBytes)
-      // TODO should check against actual length of file
-      if (uploadedBytes === feed.byteLength) {
-        log('leaving swarm')
-        swarm.leave(feed.discoveryKey)
-        swarm.destroy()
-      }
-    })
-    // logEvents(feed, 'publishfeed')
-    // TODO add a prefix.
-    callback(null, feed.key.toString('hex'), swarm)
-  }
+  })
+
+  input.on('error', (err) => {
+    throw err
+  })
+
+  log('replicating ' + key.toString('hex'))
+  callback(null, key.toString('hex'), swarm)
 }
 
 function download (link, downloadPath, size, onDownloaded, callback) {
@@ -91,73 +79,48 @@ function download (link, downloadPath, size, onDownloaded, callback) {
   const key = Buffer.from(link, 'hex') // TODO validation/processing
   // if (link.slice(0, 6) === 'dat://') link = link.slice(6) // TODO get rid
   if (key.length !== 32) return callback(new Error('link is wrong length'))
-  let hashMarker = 0
+  let blocksRecieved = 0
+  let bytesRecieved = 0
   const hashToCheckInstance = sodium.crypto_hash_sha256_instance()
-  const feed = hypercore(ram, key)
-  const swarm = replicator(feed)
-  let downloadComplete = false
-  swarm.on('connection', (socket, details) => {
-    if (details.peer) console.log(details.peer.host)
-  })
-  feed.on('peer-add', (peer) => {
-    log('[download] new peer, starting sync')
-  })
-  feed.on('peer-open', peer => {
-    log('[download] peer channel open')
-  })
-  feed.on('peer-remove', peer => {
-    log('[download] peer removed')
-  })
-  feed.on('close', peer => {
-    log('[download] feed closed')
-  })
+  const swarm = hyperswarm()
+  swarm.join(key, { announce: true, lookup: true })
   // TODO multiple filenames
   const target = fs.createWriteStream(downloadPath)
+  console.log('target is ', downloadPath)
+
+  swarm.on('connection', (connection, info) => {
+    console.log('[download] peer connected')
+    if (info.peer) console.log(info.peer.host)
+    // pump(socket, target, socket) // or just use .pipe?
+    const secureStream = noisePeer(connection, info.client)
+    // pump(secureStream, target, secureStream)
+    secureStream.pipe(target)
+    // socket.pipe(target)
+    target.on('data', (chunk) => {
+      bytesRecieved += chunk.length
+      console.log(`[download] chunk ${blocksRecieved} added, ${bytesRecieved} of ${size} (${Math.round(bytesRecieved / size * 100)}%) `)
+      hashToCheckInstance.update(chunk)
+      blocksRecieved += 1
+      if (bytesRecieved === size) downloaded()
+    })
+
+    function downloaded () {
+      log('[download] File downlowded')
+      secureStream.end()
+      swarm.leave(key)
+      swarm.destroy()
+      const hashToCheck = sodium.sodium_malloc(sodium.crypto_hash_sha256_BYTES)
+      hashToCheckInstance.final(hashToCheck)
+      if (activeDownloads.includes(link)) onDownloaded(hashToCheck)
+      activeDownloads = activeDownloads.filter(i => i !== link)
+    }
+  })
   // const target = tar.extract(downloadPath)
-
-  const source = feed.createReadStream({ live: true })
-  source.pipe(target)
-
-  source.on('data', (chunk) => {
-    console.log('chunk added', chunk.length)
-    hashToCheckInstance.update(chunk)
-    hashMarker += 1
-    if (feed.byteLength === size) {
-      if (hashMarker === feed.length) downloaded()
-    }
+  target.on('error', (err) => {
+    throw err
   })
-
-  feed.on('sync', () => {
-    console.log('size', feed.byteLength, size)
-    if (feed.byteLength === size) {
-      if (hashMarker === feed.length) downloaded()
-    }
-  })
-
-  function downloaded () {
-    log('[download] File downlowded')
-    swarm.leave(feed.discoveryKey)
-    swarm.destroy()
-    const hashToCheck = sodium.sodium_malloc(sodium.crypto_hash_sha256_BYTES)
-    hashToCheckInstance.final(hashToCheck)
-    if (activeDownloads.includes(link)) onDownloaded(hashToCheck)
-    activeDownloads = activeDownloads.filter(i => i !== link)
-  }
 
   callback(null, swarm)
-}
-
-// adapted from hypercore-indexed-file
-function createStorage (file) {
-  return (filename) => {
-    log(`[storage] ${filename}`)
-    return ram(filename)
-  }
-  // if (filename.endsWith('data')) {
-  //   return raf(pathspec)
-  // } else {
-  //   return ram(filename)
-  // }
 }
 
 // for debugging
