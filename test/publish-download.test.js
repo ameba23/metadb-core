@@ -1,5 +1,5 @@
 const test = require('tape')
-const { publish, download } = require('../transfer/hypercore-sendfile')
+const { publish, download } = require('../transfer/tar-stream')
 const tmpDir = require('tmp').dirSync
 const path = require('path')
 const baseDir = path.join(path.resolve(__dirname), './test-media')
