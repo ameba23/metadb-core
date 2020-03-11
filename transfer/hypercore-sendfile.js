@@ -16,7 +16,12 @@ const PREFIX = 'tarfs-v1://'
 
 module.exports = { publish, download }
 
-function publish (filenames, baseDir, callback) {
+function publish (filenames, baseDir, link, callback) {
+  if (typeof link === 'function' && !callback) {
+    callback = link
+    link = null
+  }
+
   log('published called', filenames)
 
   // TODO how best to detect if this has been called more than once with the same files
@@ -36,7 +41,7 @@ function publish (filenames, baseDir, callback) {
 
   // TODO: something cleverer for key generation, eg: use a diffie hellman shared secret
   // between sender and reciever
-  const key = Buffer.alloc(32)
+  const key = link ? unpackLink(link) : Buffer.alloc(32)
   sodium.randombytes_buf(key)
 
   swarm.join(key, { announce: true, lookup: true })
@@ -57,15 +62,16 @@ function publish (filenames, baseDir, callback) {
     log('leaving swarm')
     swarm.leave(key)
     swarm.destroy()
+    // TODO remove from activeUploads
   })
 
   input.on('error', (err) => {
     throw err // callback(err)
   })
 
-  const link = PREFIX + key.toString('hex')
+  link = link || packLink(key)
+
   log(`replicating ${link}`)
-  // TODO: give link a prefix which describes this kind of transmittion
   callback(null, link, swarm)
 }
 
@@ -76,8 +82,8 @@ function download (link, downloadPath, hashes, onDownloaded, callback) {
   const badHashes = []
   const verifiedHashes = []
 
-  if (link.slice(0, PREFIX.length) !== PREFIX) return callback(new Error(`Link does not have expected prefix ${PREFIX}`))
-  const key = Buffer.from(link.slice(PREFIX.length), 'hex')
+  const key = unpackLink(link)
+  if (!key) return callback(new Error(`Link does not have expected prefix ${PREFIX}`))
   if (key.length !== 32) return callback(new Error('link key is wrong length'))
 
   const files = {}
@@ -139,7 +145,6 @@ function download (link, downloadPath, hashes, onDownloaded, callback) {
     activeDownloads = activeDownloads.filter(i => i !== link)
   })
 
-  // logEvents(target, 'boop')
   swarm.on('connection', (connection, info) => {
     log('[download] peer connected')
     if (info.peer) log(info.peer.host)
@@ -149,6 +154,7 @@ function download (link, downloadPath, hashes, onDownloaded, callback) {
       log('connection closed')
     })
   })
+
   target.on('error', (err) => {
     throw err
   })
@@ -167,4 +173,14 @@ function logEvents (emitter, name) {
     console.log(`\x1b[33m${args[0]}\x1b[0m`, util.inspect(args.slice(1), { depth: 1, colors: true }))
     emit.apply(emitter, args)
   }
+}
+
+function packLink (key) {
+  return PREFIX + key.toString('hex')
+}
+
+function unpackLink (link) {
+  return (link.slice(0, PREFIX.length) === PREFIX)
+    ? Buffer.from(link.slice(PREFIX.length), 'hex')
+    : false
 }
