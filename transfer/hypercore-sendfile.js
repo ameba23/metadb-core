@@ -1,7 +1,7 @@
 // const hypercoreIndexedFile = require('hypercore-indexed-file')
 const hyperswarm = require('hyperswarm')
 const pump = require('pump')
-const noisePeer = require('noise-peer')
+// const noisePeer = require('noise-peer')
 const sodium = require('sodium-native')
 // const raf = require('random-access-file')
 // const tar = require('tar-fs')
@@ -45,23 +45,22 @@ function upload (fileObject, callback) {
   sodium.randombytes_buf(key)
 
   swarm.join(key, { announce: true, lookup: true })
-  // this only allows one peer to connect
+  // this will allow only one peer to connect
   swarm.once('connection', function (connection, info) {
     // pump(connection, input, connection)
-    const secureStream = noisePeer(connection, info.client)
-    // input.pipe(connection)
-    pump(secureStream, input, secureStream, (err) => {
-      if (err) throw err
-    })
-    input.pipe(secureStream)
+    console.log('[publish] connection')
+    input.pipe(connection)
+  })
 
-    input.on('end', () => {
-      log('[publish] finished reading file')
-      log('leaving swarm')
-      // secureStream.end()
-      // swarm.leave(key)
-      // swarm.destroy()
-    })
+  // input.on('data', () => {
+  //   console.log('[publish] data block')
+  // })
+
+  input.on('end', () => {
+    log('[publish] finished reading file')
+    log('leaving swarm')
+    swarm.leave(key)
+    swarm.destroy()
   })
 
   input.on('error', (err) => {
@@ -92,11 +91,8 @@ function download (link, downloadPath, size, onDownloaded, callback) {
     console.log('[download] peer connected')
     if (info.peer) console.log(info.peer.host)
     // pump(socket, target, socket) // or just use .pipe?
-    const secureStream = noisePeer(connection, info.client)
-    // pump(secureStream, target, secureStream)
-    secureStream.pipe(target)
-    // socket.pipe(target)
-    target.on('data', (chunk) => {
+    connection.pipe(target)
+    connection.on('data', (chunk) => {
       bytesRecieved += chunk.length
       console.log(`[download] chunk ${blocksRecieved} added, ${bytesRecieved} of ${size} (${Math.round(bytesRecieved / size * 100)}%) `)
       hashToCheckInstance.update(chunk)
@@ -106,7 +102,6 @@ function download (link, downloadPath, size, onDownloaded, callback) {
 
     function downloaded () {
       log('[download] File downlowded')
-      secureStream.end()
       swarm.leave(key)
       swarm.destroy()
       const hashToCheck = sodium.sodium_malloc(sodium.crypto_hash_sha256_BYTES)
@@ -132,4 +127,3 @@ function logEvents (emitter, name) {
     emit.apply(emitter, args)
   }
 }
-
