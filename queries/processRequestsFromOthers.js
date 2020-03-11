@@ -1,6 +1,6 @@
 const pull = require('pull-stream')
 const OwnFilesFromHashes = require('./own-files-from-hashes')
-const { publish, upload } = require('../transfer/hypercore-sendfile') // publishFiles
+const { publish } = require('../transfer/tar-stream')
 
 module.exports = function (metadb) {
   return function (callback) {
@@ -23,17 +23,18 @@ module.exports = function (metadb) {
 
     function processRequest (request, cb) {
       console.log('------------------------------REQUEST:', request)
-      if (request.pendingDownloads && request.pendingDownloads.length) {
-        upload(request.pendingDownloads[0], cb)
-      } else {
-        metadb.requests.update(request.msgSeq, { read: true }, (err) => {
-          if (err) return cb(err)
-          OwnFilesFromHashes(metadb)(request.files, (err, fileObjects) => {
-            if (err || !fileObjects.length) {
-              // publish a reply with an error message?
-              return cb() // err?
-            }
-            publish(fileObjects, metadb.storage, (err, link, network) => {
+      metadb.requests.update(request.msgSeq, { read: true }, (err) => {
+        if (err) return cb(err)
+        OwnFilesFromHashes(metadb)(request.files, (err, fileObjects) => {
+          if (err || !fileObjects.length) {
+            // publish a reply with an error message?
+            return cb() // err?
+          }
+          const filenames = fileObjects.map(f => f.file)
+          if (request.link) {
+            publish(filenames, metadb.storage, request.link, cb)
+          } else {
+            publish(filenames, metadb.storage, (err, link, network) => {
               if (err) return cb(err) // also publish a sorry message?
               const branch = request.msgSeq
               const recipient = branch.split('@')[0]
@@ -43,15 +44,15 @@ module.exports = function (metadb) {
                 // metadb.repliedTo.push(branch)
                 // update index?
                 // metadb.activeDownloads.push(link)
-                metadb.requests.update(request.msgSeq, { pendingDownloads: fileObjects }, (err) => {
+                metadb.requests.update(request.msgSeq, { link }, (err) => {
                   if (err) return cb(err)
                   cb(null, network) // null, network
                 })
               })
             })
-          })
+          }
         })
-      }
+      })
     }
   }
 }
