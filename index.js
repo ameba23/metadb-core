@@ -165,4 +165,10 @@ class MetaDb {
 
   swarm (key, cb) { return Swarm(this)(key, cb) }
   unswarm (key, cb) { return Swarm.unswarm(this)(key, cb) }
+
+  stop (cb) {
+    // TODO: gracefully stop transfers and disconnect from swarms
+    cb()
+    process.exit(0)
+  }
 }
