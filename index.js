@@ -35,6 +35,8 @@ class MetaDb {
     mkdirp.sync(this.storage)
     this.kappaPrivate = KappaPrivate()
     this.isTest = opts.test
+
+    // TODO downloadPath should be retrieved from and saves to config file
     this.downloadPath = opts.test
       ? path.join(this.storage, 'downloads')
       : path.join(this.storage, 'downloads') // os.homedir(), 'Downloads' ?
@@ -123,28 +125,34 @@ class MetaDb {
 
   getSettings (cb) {
     if (!this.indexesReady) this.buildIndexes(this.getSettings(cb))
-    this.query.peers(() => {
+    this.query.peers((err, peers) => {
+      if (err) return cb(err)
       cb(null, {
         key: this.keyHex,
+        filesInDb: this.filesInDb,
+        bytesInDb: this.bytesInDb,
+        peers,
         peerNames: this.peerNames,
         connections: Object.keys(this.connections),
         config: this.config,
         connectedPeers: this.connectedPeers,
+        downloadPath: this.downloadPath,
         homeDir
-        // events: {
-        //   files: this.files.events,
-        //   peers: this.peers.events,
-        //   requests: this.requests.events
-        // }
       })
     })
   }
 
   setSettings (settings, cb) {
+    const self = this
     if (settings.name) {
+      // TODO check this is not our current name before publishing
       this.publish.about(settings.name, done)
     }
-    const self = this
+    if (settings.downloadPath && (this.downloadPath !== settings.downloadPath)) {
+      this.downloadPath = settings.downloadPath
+      mkdirp.sync(this.downloadPath)
+      done()
+    }
     function done (err) {
       if (err) return cb(err)
       self.getSettings(cb)

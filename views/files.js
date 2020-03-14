@@ -141,19 +141,23 @@ module.exports = function (level) {
       },
       count: function (core, opts = {}, cb) {
         let files = 0
+        let bytes = 0
         const peerFiles = {}
         pull(
           core.api.files.pullStream(opts),
           pull.drain((file) => {
             files++
+            bytes += file.size
             file.holders.forEach((peer) => {
-              peerFiles[peer] = peerFiles[peer] || 0
-              peerFiles[peer]++
+              peerFiles[peer] = peerFiles[peer] || { files: 0, bytes: 0 }
+              peerFiles[peer].files++
+              peerFiles[peer].bytes += file.size
             })
             return true
           }, (err) => {
             cb(err, {
               files,
+              bytes,
               peerFiles
             })
           })

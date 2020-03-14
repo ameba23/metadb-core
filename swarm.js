@@ -6,19 +6,22 @@ const debug = require('debug')('metadb')
 const assert = require('assert')
 const { keyedHash, GENERIC_HASH_BYTES } = require('./crypto')
 const { isHexString } = require('./util')
+const pull = require('pull-stream')
 const log = console.log
 
 const CONTEXT = 'metadb'
 const DEFAULT_TOPIC = 'mouse-p2p-app' // temp TODO
 
 module.exports = function (metadb) {
-  return function swarm (key, cb) {
+  const connect = function (key, cb) {
     if (!key) return cb(null, new Error('No topic given'))
+    if (Array.isArray(key)) return connectMultipleSwarms(key, cb)
     if (key === '') key = DEFAULT_TOPIC
     metadb.connections[key] = _swarm(key)
     // console.log(Object.keys(metadb.connections))
     if (cb) cb(null, Object.keys(metadb.connections))
   }
+  return connect
 
   function _swarm (key) {
     key = keyToTopic(key)
@@ -56,11 +59,24 @@ module.exports = function (metadb) {
 
     return swarm
   }
+
+  function connectMultipleSwarms (keys, callback) {
+    pull(
+      pull.values(keys),
+      pull.asyncMap(connect),
+      pull.collect((err, swarms) => {
+        if (err) return callback(err)
+        callback(null, swarms.slice(-1)[0])
+      })
+    )
+  }
 }
 
 module.exports.unswarm = function (metadb) {
-  return function unswarm (key, cb) {
-    if (!key) return cb(null, new Error('No topic given'))
+  const unswarm = function (key, cb) {
+    // if no swarm specified, disconnect from everything
+    if (!key) key = Object.keys(metadb.connections)
+    if (Array.isArray(key)) return disconnectMultipleSwarms(key, cb)
     if (key === '') key = DEFAULT_TOPIC
     if (metadb.connections[key]) {
       metadb.connections[key].leave(keyToTopic(key))
@@ -69,6 +85,18 @@ module.exports.unswarm = function (metadb) {
     }
     log('unswarmed', Object.keys(metadb.connections))
     if (cb) cb(null, Object.keys(metadb.connections))
+  }
+  return unswarm
+
+  function disconnectMultipleSwarms (keys, callback) {
+    pull(
+      pull.values(keys),
+      pull.asyncMap(unswarm),
+      pull.collect((err, swarms) => {
+        if (err) return callback(err)
+        callback(null, swarms.slice(-1)[0])
+      })
+    )
   }
 }
 

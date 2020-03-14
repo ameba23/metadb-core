@@ -63,14 +63,16 @@ module.exports = function Query (metadb) {
 
       metadb.files.count(null, (err, counters) => {
         if (err) return callback(err)
+        metadb.filesInDb = counters.files
+        metadb.bytesInDb = counters.bytes
         pull(
           pull.values(peers),
           pull.map((peerKey) => {
-            const numberFiles = counters.peerFiles ? counters.peerFiles[peerKey] : undefined
-            return {
-              feedId: peerKey,
-              numberFiles
-            }
+            const peerProperties = counters.peerFiles
+              ? counters.peerFiles[peerKey]
+              : {}
+            peerProperties.feedId = peerKey
+            return peerProperties
           }),
           pull.asyncMap((peerObj, cb) => {
             metadb.peers.getName(peerObj.feedId, (err, name) => {
