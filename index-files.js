@@ -12,7 +12,6 @@ const { readableBytes } = require('./util')
 const { isAddFile } = require('./schemas') // TODO
 
 const SCHEMAVERSION = '1.0.0'
-
 module.exports = function indexFiles (metadb) {
   return function (dir, opts = {}, callback) {
     if (!metadb.localFeed) return callback(new Error('No local feed, call ready()'))
@@ -33,7 +32,10 @@ module.exports = function indexFiles (metadb) {
           pull.values(files),
           pull.filter(ignore.filesWeWant),
           pull.asyncMap((file, cb) => {
-            fs.readFile(path.join(dir, file), (err, data) => {
+            const filename = path.join(dir, file)
+            // TODO use stream not buffer
+            // const readStream = fs.createReadStream(filename)
+            fs.readFile(filename, (err, data) => {
               if (err) {
                 log(`Error reading file ${file}, skipping.`)
                 return cb()
@@ -48,7 +50,7 @@ module.exports = function indexFiles (metadb) {
               log(
                 `Extracting metadata from: ${chalk.green(file)} length: ${chalk.green(readableBytes(size))} ${chalk.blue(hash.slice(-8))}`
               )
-              extract(data, { filename: file }, (err, metadata) => {
+              extract(filename, (err, metadata) => {
                 if (err) return cb(err) // or just carry on?
 
                 var newEntry = {
