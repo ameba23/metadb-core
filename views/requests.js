@@ -5,6 +5,7 @@ const { isRequest, isReply } = require('../schemas')
 
 module.exports = function (level) {
   const events = new EventEmitter()
+  let foundOne = false
 
   return {
     maxBatch: 100,
@@ -14,6 +15,7 @@ module.exports = function (level) {
       var pending = 0
       msgs.forEach(function (msg) {
         if (!sanitize(msg)) return
+        foundOne = true
         pending++
         delete msg.value.version
         if (msg.value.type === 'request') {
@@ -56,7 +58,10 @@ module.exports = function (level) {
     },
 
     indexed: (msgs) => {
-      events.emit('update', msgs)
+      if (foundOne) {
+        events.emit('update', msgs)
+        foundOne = false
+      }
     },
 
     api: {
