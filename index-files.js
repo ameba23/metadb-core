@@ -7,7 +7,7 @@ const extract = require('metadata-extract')
 const homeDir = require('os').homedir()
 
 const ignore = require('./ignore.js')
-const { sha256 } = require('./crypto')
+const { Sha256Instance } = require('./crypto')
 const { readableBytes } = require('./util')
 const { isAddFile } = require('./schemas') // TODO
 
@@ -33,39 +33,52 @@ module.exports = function indexFiles (metadb) {
           pull.filter(ignore.filesWeWant),
           pull.asyncMap((file, cb) => {
             const filename = path.join(dir, file)
-            // TODO use stream not buffer
-            // const readStream = fs.createReadStream(filename)
-            fs.readFile(filename, (err, data) => {
-              if (err) {
-                log(`Error reading file ${file}, skipping.`)
-                return cb()
-              }
-              const size = data.length
+            log(`Extracting metadata from: ${chalk.green(file)}`)
+            // length: ${chalk.green(readableBytes(size))} ${chalk.blue(hash.slice(-8))}`
+            let size = 0
+            let hash
+            let gotMetadata
+            const sha256Instance = new Sha256Instance()
+            // TODO put this inside try/catch
+            const readStream = fs.createReadStream(filename)
+            readStream.on('data', (chunk) => {
+              sha256Instance.update(chunk)
+              size += chunk.length
+            })
+            readStream.on('close', () => {
+              // const hash = sha256(data).toString('hex')
+              hash = sha256Instance.final().toString('hex')
               if (!size) {
                 log(chalk.red(`File ${file} has length 0. Skipping.`))
                 return cb()
               }
-              // const hash = sha256(data).toString('base64') + '.sha256'
-              const hash = sha256(data).toString('hex')
-              log(
-                `Extracting metadata from: ${chalk.green(file)} length: ${chalk.green(readableBytes(size))} ${chalk.blue(hash.slice(-8))}`
-              )
-              extract(filename, (err, metadata) => {
-                if (err) return cb(err) // or just carry on?
-
-                var newEntry = {
-                  type: 'addFile',
-                  sha256: hash,
-                  filename: file,
-                  version: SCHEMAVERSION,
-                  size,
-                  metadata
-                }
-                var duplicate = false
-                // check if an identical entry exists in the feed
-                const feedStream = metadb.localFeed.createReadStream({ live: false })
-                feedStream.on('data', (data) => {
-                  delete data.timestamp
+              if (gotMetadata) {
+                publishMetadata()
+              }
+            })
+            extract(filename, (err, metadata) => {
+              if (err) return cb(err) // or just carry on?
+              gotMetadata = metadata
+              if (hash) {
+                publishMetadata()
+              }
+            })
+            function publishMetadata () {
+              const newEntry = {
+                type: 'addFile',
+                sha256: hash,
+                filename: file,
+                version: SCHEMAVERSION,
+                size,
+                metadata: gotMetadata
+              }
+              let duplicate = false
+              // check if an identical entry exists in the feed
+              const feedStream = metadb.localFeed.createReadStream({ live: false })
+              feedStream.on('data', (data) => {
+                delete data.timestamp
+                // To speed things up by not stringifying every entry
+                if (data.sha256 === newEntry.sha256) {
                   // if (isEqual(newEntry, data)) { //lodash doesnt seem to work here
                   // TODO: use deepmerge
                   if (JSON.stringify(data) === JSON.stringify(newEntry)) { // bad solution
@@ -74,26 +87,26 @@ module.exports = function indexFiles (metadb) {
                     feedStream.destroy()
                     cb(null, newEntry)
                   }
-                })
-
-                feedStream.on('end', () => {
-                  if (!duplicate) {
-                    newEntry.timestamp = Date.now()
-                    // if (!isAddFile(newEntry)) return cb(error...)
-                    metadb.localFeed.append(newEntry, (err, seq) => {
-                      if (err) throw err
-                      log('Data was appended as entry #' + seq)
-                      // highestSeq = seq
-                      dataAdded += 1
-                      metadb.sharedb.put(hash, path.join(dir, file), (err) => {
-                        if (err) return cb(err)
-                        cb(null, newEntry)
-                      })
-                    })
-                  }
-                })
+                }
               })
-            })
+
+              feedStream.on('end', () => {
+                if (!duplicate) {
+                  newEntry.timestamp = Date.now()
+                  // if (!isAddFile(newEntry)) return cb(error...)
+                  metadb.localFeed.append(newEntry, (err, seq) => {
+                    if (err) throw err
+                    log('Data was appended as entry #' + seq)
+                    // highestSeq = seq
+                    dataAdded += 1
+                    metadb.sharedb.put(hash, path.join(dir, file), (err) => {
+                      if (err) return cb(err)
+                      cb(null, newEntry)
+                    })
+                  })
+                }
+              })
+            }
           }),
           pull.collect((err, datas) => {
             // TODO: don't need to complain if just one file wouldnt read
@@ -109,13 +122,6 @@ module.exports = function indexFiles (metadb) {
                 metadataAdded: dataAdded
               })
             })
-            // if (dataAdded < 1) return callback()
-            // metadb.loadConfig((err) => {
-            //   if (err) return callback(err)
-            //   metadb.config.shares[highestSeq] = path.resolve(dir)
-            //   log(`added shares sequence numbers ${chalk.green(lowestSeq)} to ${chalk.green(highestSeq)}`)
-            //   metadb.writeConfig(callback)
-            // })
           })
         )
       })
