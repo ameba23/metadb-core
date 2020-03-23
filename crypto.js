@@ -2,6 +2,22 @@ const sodium = require('sodium-native')
 const assert = require('assert')
 const GENERIC_HASH_BYTES = sodium.crypto_generichash_BYTES
 
+class Sha256Instance {
+  constructor () {
+    this.instance = sodium.crypto_hash_sha256_instance()
+  }
+
+  update (input) {
+    this.instance.update(input)
+  }
+
+  final () {
+    const hash = sodium.sodium_malloc(sodium.crypto_hash_sha256_BYTES)
+    this.instance.final(hash)
+    return hash
+  }
+}
+
 function sha256 (msg) {
   var hash = sodium.sodium_malloc(sodium.crypto_hash_sha256_BYTES)
   sodium.crypto_hash_sha256(hash, msg)
@@ -37,5 +53,5 @@ function keypair (seed) {
   }
 }
 module.exports = {
-  sha256, keyedHash, GENERIC_HASH_BYTES, keypair
+  sha256, keyedHash, GENERIC_HASH_BYTES, keypair, Sha256Instance
 }
