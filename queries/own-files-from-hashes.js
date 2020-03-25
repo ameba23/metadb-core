@@ -8,9 +8,9 @@ module.exports = function (metadb) {
     pull(
       pull.values(hashList),
       pull.asyncMap((hash, cb) => {
-        metadb.sharedb.get(hash, (err, file) => {
+        metadb.sharedb.get(hash, (err, fileObject) => {
           if (err) return cb(err)
-          cb(null, { hash, file })
+          cb(null, fileObject)
         })
       }),
       pull.collect(callback)

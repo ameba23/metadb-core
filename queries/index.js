@@ -1,4 +1,5 @@
 const pull = require('pull-stream')
+const path = require('path')
 const Abouts = require('./query-abouts')
 const ProcessRequestsFromOthers = require('./processRequestsFromOthers')
 const ProcessRequestsFromSelf = require('./processRequestsFromSelf')
@@ -13,9 +14,9 @@ module.exports = function Query (metadb) {
       return pull(
         query.filesByPeer(metadb.keyHex),
         pull.asyncMap((file, cb) => {
-          metadb.sharedb.get(file.sha256, (err, filename) => {
+          metadb.sharedb.get(file.sha256, (err, fileObject) => {
             if (err) return cb(err)
-            file.filename = filename
+            file.filename = path.join(fileObject.baseDir, fileObject.filePath)
             cb(null, file)
           })
         })

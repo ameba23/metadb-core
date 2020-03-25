@@ -11,7 +11,9 @@ test('index a directory', t => {
   var metadb = Metadb({ path: tmpDir().name })
   metadb.ready(() => {
     metadb.indexFiles(pathToIndex, (err) => {
-      t.error(err, 'does not throw err')
+      t.error(err, 'no error on starting indexing')
+    }, (err) => {
+      t.error(err, 'no error on finishing indexing')
       metadb.buildIndexes(() => {
         metadb.files.get(donkeyHash, (err, fileObj) => {
           t.error(err, 'no error on getting file by hash')

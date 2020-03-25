@@ -30,11 +30,11 @@ module.exports = function (metadb) {
             // publish a reply with an error message?
             return cb() // err?
           }
-          const filenames = fileObjects.map(f => f.file)
+          // const filenames = fileObjects.map(f => f.file)
           if (request.link) {
-            publish(filenames, metadb.storage, request.link, cb)
+            publish(fileObjects, metadb.storage, request.link, cb)
           } else {
-            publish(filenames, metadb.storage, (err, link, network) => {
+            publish(fileObjects, metadb.storage, (err, link, network) => {
               if (err) return cb(err) // also publish a sorry message?
               const branch = request.msgSeq
               const recipient = branch.split('@')[0]

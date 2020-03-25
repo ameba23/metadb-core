@@ -14,11 +14,7 @@ module.exports = function (metadb) {
           pull.values(request.replies),
           pull.asyncMap((reply, cb2) => {
             if (!request.closed) {
-              // hash to filename / folder
-              // just take the first file for now, but eventually this will be
-              // an asyncmap
-              // metadb.files.get(request.files[0], (err, requestedFileMetadata) => {
-              download(reply.link, metadb.downloadPath, onDownloaded, request.files, (err, network) => {
+              download(reply.link, metadb.downloadPath, request.files, onDownloaded, (err, network) => {
                 if (err) return cb2(err)
                 // metadb.pendingDownloads.push(network) // TODO somehow check its not already there
                 cb2(null, network)

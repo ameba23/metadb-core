@@ -1,6 +1,7 @@
 // const hypercoreIndexedFile = require('hypercore-indexed-file')
 const hyperswarm = require('hyperswarm')
 const pump = require('pump')
+const path = require('path')
 // const noisePeer = require('noise-peer')
 const sodium = require('sodium-native')
 // const raf = require('random-access-file')
@@ -16,17 +17,18 @@ const PREFIX = 'tarfs-v1://'
 
 module.exports = { publish, download }
 
-function publish (filenames, baseDir, link, callback) {
+function publish (fileObjects, baseDir, link, callback) {
   if (typeof link === 'function' && !callback) {
     callback = link
     link = null
   }
 
-  log('published called', filenames)
+  const filePaths = fileObjects.map(f => f.filePath)
+  log('published called', filePaths)
 
   // TODO how best to detect if this has been called more than once with the same files
-  if (activeUploads.includes(filenames.toString())) return callback(null, false)
-  activeUploads.push(filenames.toString()) // TODO this should be a db write
+  if (activeUploads.includes(filePaths.toString())) return callback(null, false)
+  activeUploads.push(filePaths.toString()) // TODO this should be a db write
 
   // Derive a keypair from the hash of the file
   //  - good because it gives content-addressing - other peers can join
@@ -34,8 +36,15 @@ function publish (filenames, baseDir, link, callback) {
   // const keypair = crypto.keypair(Buffer.from(hash, 'hex'))
   // const optionsForHypercore = { key: keypair.publicKey, secretKey: keypair.secretKey }
 
-  const input = tar.pack(baseDir, { entries: filenames })
-  // const input = fs.createReadStream(file)
+  const input = tar.pack('/', {
+    entries: fileObjects.map(f => path.join(f.baseDir, f.filePath)),
+    map: function (header) {
+      // Remove the private part of the dir
+      const fileObject = fileObjects.find(f => path.join(f.baseDir, f.filePath) === header.name)
+      header.name = fileObject.filePath
+      return header
+    }
+  })
 
   const swarm = hyperswarm()
 
@@ -66,6 +75,7 @@ function publish (filenames, baseDir, link, callback) {
   })
 
   input.on('error', (err) => {
+    // TODO check if error is ENOENT (no such file)
     throw err // callback(err)
   })
 
@@ -166,14 +176,14 @@ function download (link, downloadPath, hashes, onDownloaded, callback) {
 }
 
 // for debugging
-function logEvents (emitter, name) {
-  const emit = emitter.emit
-  name = name ? `(${name}) ` : ''
-  emitter.emit = (...args) => {
-    console.log(`\x1b[33m${args[0]}\x1b[0m`, util.inspect(args.slice(1), { depth: 1, colors: true }))
-    emit.apply(emitter, args)
-  }
-}
+// function logEvents (emitter, name) {
+//   const emit = emitter.emit
+//   name = name ? `(${name}) ` : ''
+//   emitter.emit = (...args) => {
+//     console.log(`\x1b[33m${args[0]}\x1b[0m`, util.inspect(args.slice(1), { depth: 1, colors: true }))
+//     emit.apply(emitter, args)
+//   }
+// }
 
 function packLink (key) {
   return PREFIX + key.toString('hex')

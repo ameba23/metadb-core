@@ -12,29 +12,31 @@ const { readableBytes } = require('./util')
 const { isAddFile } = require('./schemas') // TODO
 
 const SCHEMAVERSION = '1.0.0'
+
+// TODO add a listener for pause/resume, cancel events
 module.exports = function indexFiles (metadb) {
-  return function (dir, opts = {}, callback) {
-    if (!metadb.localFeed) return callback(new Error('No local feed, call ready()'))
-    if (typeof opts === 'function' && !callback) {
-      callback = opts
+  return function (dir, opts = {}, onStarting, onFinished) {
+    if (!metadb.localFeed) return onStarting(new Error('No local feed, call ready()'))
+    if (typeof opts === 'function' && !onFinished) {
+      onFinished = onStarting || function noop () {}
+      onStarting = opts
       opts = {}
     }
-    if (dir === homeDir) return callback(new Error('You may not index your entire home directory'))
+    if (dir === homeDir) return onStarting(new Error('You may not index your entire home directory'))
+    onStarting()
     const log = opts.log || console.log
     ignore.setup(() => {
-      var highestSeq
-      var dataAdded = 0
-      const lowestSeq = metadb.localFeed.length
+      // var highestSeq
+      let dataAdded = 0
+      // const lowestSeq = metadb.localFeed.length
       log('Scanning directory ', dir, '...')
       glob('**/*', { cwd: dir, nodir: true }, (err, files) => {
-        if (err) return callback(err)
+        if (err) return onFinished(err)
         pull(
           pull.values(files),
           pull.filter(ignore.filesWeWant),
           pull.asyncMap((file, cb) => {
             const filename = path.join(dir, file)
-            log(`Extracting metadata from: ${chalk.green(file)}`)
-            // length: ${chalk.green(readableBytes(size))} ${chalk.blue(hash.slice(-8))}`
             let size = 0
             let hash
             let gotMetadata
@@ -52,6 +54,9 @@ module.exports = function indexFiles (metadb) {
                 log(chalk.red(`File ${file} has length 0. Skipping.`))
                 return cb()
               }
+              log(
+                `Extracting metadata from: ${chalk.green(file)} length: ${chalk.green(readableBytes(size))} ${chalk.blue(hash.slice(-8))}`
+              )
               if (gotMetadata) {
                 publishMetadata()
               }
@@ -99,7 +104,7 @@ module.exports = function indexFiles (metadb) {
                     log('Data was appended as entry #' + seq)
                     // highestSeq = seq
                     dataAdded += 1
-                    metadb.sharedb.put(hash, path.join(dir, file), (err) => {
+                    metadb.sharedb.put(hash, { baseDir: dir, filePath: file }, (err) => {
                       if (err) return cb(err)
                       cb(null, newEntry)
                     })
@@ -110,14 +115,14 @@ module.exports = function indexFiles (metadb) {
           }),
           pull.collect((err, datas) => {
             // TODO: don't need to complain if just one file wouldnt read
-            if (err) return callback(err)
+            if (err) return onFinished(err)
             // todo log feedname
             log('Feed key ', chalk.green(metadb.localFeed.key.toString('hex')))
             log('Number of files parsed: ', chalk.green(datas.length))
             log('Number of metadata added: ', chalk.green(dataAdded))
             metadb.shareTotals.put(dir, dataAdded, (err) => {
-              if (err) return callback(err)
-              callback(null, {
+              if (err) return onFinished(err)
+              onFinished(null, {
                 filesParsed: datas.length,
                 metadataAdded: dataAdded
               })
