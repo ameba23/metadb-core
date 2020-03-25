@@ -68,7 +68,7 @@ class MetaDb {
       sublevel(this.db, REQUESTS, { valueEncoding: 'json' })
     ))
 
-    this.sharedb = sublevel(this.db, SHARES)
+    this.sharedb = sublevel(this.db, SHARES, { valueEncoding: 'json' })
     this.shareTotals = sublevel(this.db, 'ST')
     this.files = this.core.api.files
     this.peers = this.core.api.peers
