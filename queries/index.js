@@ -1,5 +1,6 @@
 const pull = require('pull-stream')
 const path = require('path')
+const confirmKey = require('confirm-key')
 const Abouts = require('./query-abouts')
 const ProcessRequestsFromOthers = require('./processRequestsFromOthers')
 const ProcessRequestsFromSelf = require('./processRequestsFromSelf')
@@ -70,15 +71,17 @@ module.exports = function Query (metadb) {
           pull.values(peers),
           pull.map((peerKey) => {
             const peerProperties = counters.peerFiles
-              ? counters.peerFiles[peerKey]
+              ? counters.peerFiles[peerKey] || {}
               : {}
             peerProperties.feedId = peerKey
             return peerProperties
           }),
           pull.asyncMap((peerObj, cb) => {
             metadb.peers.getName(peerObj.feedId, (err, name) => {
-              if (!err) peerObj.name = name
-              metadb.peerNames[peerObj.feedId] = name
+              peerObj.name = err
+                ? deriveNameFromFeedId(peerObj.feedId)
+                : name
+              metadb.peerNames[peerObj.feedId] = peerObj.name
               return cb(null, peerObj)
             })
           }),
@@ -120,4 +123,8 @@ module.exports = function Query (metadb) {
     processRequestsFromSelf: ProcessRequestsFromSelf(metadb)
   }
   return query
+}
+
+function deriveNameFromFeedId (feedIdHex) {
+  return confirmKey(Buffer.from(feedIdHex, 'hex'), { wordlist: 'names.json' })
 }

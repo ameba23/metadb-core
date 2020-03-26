@@ -17,7 +17,7 @@ const PREFIX = 'tarfs-v1://'
 
 module.exports = { publish, download }
 
-function publish (fileObjects, baseDir, link, callback) {
+function publish (fileObjects, link, callback) {
   if (typeof link === 'function' && !callback) {
     callback = link
     link = null
@@ -50,8 +50,7 @@ function publish (fileObjects, baseDir, link, callback) {
 
   // TODO: something cleverer for key generation, eg: use a diffie hellman shared secret
   // between sender and reciever
-  const key = link ? unpackLink(link) : Buffer.alloc(32)
-  sodium.randombytes_buf(key)
+  const key = link ? unpackLink(link) : crypto.randomBytes(32)
 
   swarm.join(key, { announce: true, lookup: true })
 

@@ -52,6 +52,13 @@ function keypair (seed) {
     secretKey
   }
 }
+
+function randomBytes (length) {
+  const result = Buffer.alloc(length)
+  sodium.randombytes_buf(result)
+  return result
+}
+
 module.exports = {
-  sha256, keyedHash, GENERIC_HASH_BYTES, keypair, Sha256Instance
+  sha256, keyedHash, GENERIC_HASH_BYTES, keypair, Sha256Instance, randomBytes
 }

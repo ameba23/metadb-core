@@ -27,6 +27,7 @@ test('publish', t => {
       const downloadPath = tmpDir().name
 
       const filenames = fileObjects.map(f => f.filename)
+      // TODO should be file objects
       publish(filenames, baseDir, (err, feedKey, feedSwarm) => {
         t.error(err, 'No error on publish')
         t.ok(feedKey, 'gives feed key')
