@@ -99,6 +99,8 @@ function download (link, downloadPath, hashes, onDownloaded, callback) {
   const swarm = hyperswarm()
   swarm.join(key, { announce: true, lookup: true })
 
+  log('[download] swarm joined')
+
   // const target = fs.createWriteStream(downloadPath)
   const target = tar.extract(downloadPath, {
     mapStream: function (fileStream, header) {

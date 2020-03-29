@@ -76,7 +76,7 @@ class MetaDb {
 
     this.files.events.on('update', () => {})
     this.peers.events.on('update', () => {})
-    this.requests.events.on('update', () => {
+    this.requests.events.on('update', (messagesFound) => {
       // TODO
       this.query.processRequestsFromOthers((err, networks) => {
         if (err) console.log(err)
