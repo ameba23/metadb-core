@@ -14,6 +14,17 @@ function arrayMerge (destArray, sourceArray) {
   return uniq(destArray.concat(sourceArray))
 }
 
+function customMerge (key) {
+  if (key === 'filename') {
+    return function (a, b) {
+      if (a === b) return a
+      if (!Array.isArray(a)) a = [a]
+      if (!Array.isArray(b)) b = [b]
+      return arrayMerge(a, b)
+    }
+  }
+}
+
 module.exports = function (level) {
   const events = new EventEmitter()
   return {
@@ -31,7 +42,8 @@ module.exports = function (level) {
         let merged = msg.value
         level.get(HASH + msg.value.sha256, function (err, existingValue) {
           if (!(err && err.notFound)) {
-            merged = merge(existingValue, msg.value, { arrayMerge }) // TODO: this will clobber old values
+            // TODO: this will clobber old values
+            merged = merge(existingValue, msg.value, { arrayMerge, customMerge })
           }
 
           merged.holders = merged.holders || []
