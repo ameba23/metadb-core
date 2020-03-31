@@ -35,11 +35,15 @@ module.exports = function Query (metadb) {
         pull.filter((file) => {
           var found = 0
           substrings.forEach(substring => {
+            const filename = Array.isArray(file.filename)
+              ? file.filename.toString().toLowerCase()
+              : file.filename.toLowerCase()
+
             // search term beginning with ! filter results which do not contain the term
             if (substring[0] === '!') {
-              if (file.filename.toLowerCase().includes(substring.slice(1))) return 0
+              if (filename.includes(substring.slice(1))) return 0
             } else {
-              if (file.filename.toLowerCase().includes(substring)) found++
+              if (filename.includes(substring)) found++
             }
           })
           // TODO: sort them by 'found'
@@ -48,14 +52,19 @@ module.exports = function Query (metadb) {
       )
     },
 
+    // *** TODO: test this will filename array ***
     byExtension: function (extensions) {
       if (typeof extensions === 'string') extensions = [extensions]
       extensions = extensions.map(e => e.toLowerCase())
       return pull(
         query.files(),
         pull.filter((file) => {
-          // TODO lodash get
-          return extensions.includes(file.filename.split('.').pop().toLowerCase())
+          const filename = Array.isArray(file.filename)
+            ? file.filename
+            : [file.filename]
+
+          const fileExtensions = filename.map(f => f.split('.').pop().toLowerCase())
+          return fileExtensions.filter(extension => extensions.includes(extension)).length
         })
       )
     },
