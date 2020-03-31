@@ -16,7 +16,8 @@ test('publish', t => {
       hashFile(path.join(baseDir, filename), (err, hashBuffer, size) => {
         if (err) cb(err)
         cb(null, {
-          filename,
+          filePath: filename,
+          baseDir,
           hash: hashBuffer.toString('hex')
         })
       })
@@ -26,9 +27,9 @@ test('publish', t => {
 
       const downloadPath = tmpDir().name
 
-      const filenames = fileObjects.map(f => f.filename)
+      // const filenames = fileObjects.map(f => f.filename)
       // TODO should be file objects
-      publish(filenames, baseDir, (err, feedKey, feedSwarm) => {
+      publish(fileObjects, (err, feedKey, feedSwarm) => {
         t.error(err, 'No error on publish')
         t.ok(feedKey, 'gives feed key')
         const hashes = fileObjects.map(f => f.hash)

@@ -59,6 +59,35 @@ function randomBytes (length) {
   return result
 }
 
+class CryptoEncoder {
+  constructor (nonces, key) {
+    // Taken from simple-hypercore-protocol
+    this.rnonce = nonces.rnonce
+    this.tnonce = nonces.tnonce
+    this.rx = sodium.crypto_stream_xor_instance(this.rnonce, key)
+    this.tx = sodium.crypto_stream_xor_instance(this.tnonce, key)
+  }
+
+  encrypt () {
+    const self = this
+    return function (chunk, enc, callback) {
+      // TODO should be able to do in-place encryption
+      const out = Buffer.alloc(chunk.length)
+      self.tx.update(out, chunk)
+      return callback(null, out)
+    }
+  }
+
+  decrypt () {
+    const self = this
+    return function (chunk, enc, callback) {
+      const out = Buffer.alloc(chunk.length)
+      self.rx.update(out, chunk)
+      return callback(null, out)
+    }
+  }
+}
+
 module.exports = {
-  sha256, keyedHash, GENERIC_HASH_BYTES, keypair, Sha256Instance, randomBytes
+  sha256, keyedHash, GENERIC_HASH_BYTES, keypair, Sha256Instance, randomBytes, CryptoEncoder
 }

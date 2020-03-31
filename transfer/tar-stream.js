@@ -1,10 +1,8 @@
-// const hypercoreIndexedFile = require('hypercore-indexed-file')
 const hyperswarm = require('hyperswarm')
-const pump = require('pump')
 const path = require('path')
 // const noisePeer = require('noise-peer')
 const sodium = require('sodium-native')
-// const raf = require('random-access-file')
+const through = require('through2')
 const tar = require('tar-fs')
 const log = console.log
 const crypto = require('../crypto')
@@ -22,6 +20,10 @@ function publish (fileObjects, link, callback) {
     callback = link
     link = null
   }
+  const encoder = new crypto.CryptoEncoder({
+    rnonce: Buffer.from('this is 24 bytes really!'),
+    tnonce: Buffer.from('this is 24 bytes really!')
+  }, Buffer.from('this 32 bytes would you believe!'))
 
   const filePaths = fileObjects.map(f => f.filePath)
   log('published called', filePaths)
@@ -29,12 +31,6 @@ function publish (fileObjects, link, callback) {
   // TODO how best to detect if this has been called more than once with the same files
   if (activeUploads.includes(filePaths.toString())) return callback(null, false)
   activeUploads.push(filePaths.toString()) // TODO this should be a db write
-
-  // Derive a keypair from the hash of the file
-  //  - good because it gives content-addressing - other peers can join
-  //  - bad for security - so currently not using
-  // const keypair = crypto.keypair(Buffer.from(hash, 'hex'))
-  // const optionsForHypercore = { key: keypair.publicKey, secretKey: keypair.secretKey }
 
   const input = tar.pack('/', {
     entries: fileObjects.map(f => path.join(f.baseDir, f.filePath)),
@@ -58,7 +54,7 @@ function publish (fileObjects, link, callback) {
   swarm.once('connection', function (connection, info) {
     // pump(connection, input, connection)
     log('[publish] connected to peer')
-    input.pipe(connection)
+    input.pipe(through(encoder.encrypt())).pipe(connection)
   })
 
   // input.on('data', () => {
@@ -75,7 +71,7 @@ function publish (fileObjects, link, callback) {
 
   input.on('error', (err) => {
     // TODO check if error is ENOENT (no such file)
-    throw err // callback(err)
+    throw err // TODO callback(err)
   })
 
   link = link || packLink(key)
@@ -87,6 +83,11 @@ function publish (fileObjects, link, callback) {
 function download (link, downloadPath, hashes, onDownloaded, callback) {
   if (activeDownloads.includes(link)) return callback(null, false)
   activeDownloads.push(link)
+
+  const encoder = new crypto.CryptoEncoder({
+    rnonce: Buffer.from('this is 24 bytes really!'),
+    tnonce: Buffer.from('this is 24 bytes really!')
+  }, Buffer.from('this 32 bytes would you believe!'))
 
   const badHashes = []
   const verifiedHashes = []
@@ -160,7 +161,7 @@ function download (link, downloadPath, hashes, onDownloaded, callback) {
     log('[download] peer connected')
     if (info.peer) log(info.peer.host)
     // pump(socket, target, socket) // or just use .pipe?
-    connection.pipe(target)
+    connection.pipe(through(encoder.decrypt())).pipe(target)
     connection.on('close', () => {
       log('connection closed')
     })
