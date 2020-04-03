@@ -25,4 +25,16 @@ function isBranchRef (thing) {
     if (isHexString(thing[0], FEED_KEY_LENGTH) && parseInt(thing[1]) > -1) return true
   } catch (err) { return false }
 }
-module.exports = { readableBytes, uniq, isHexString, isBranchRef }
+
+function packLinkGeneral (key, PREFIX) {
+  if ((key.length === PREFIX.length + 32) && (key.slice(0, PREFIX.length) === PREFIX)) return key
+  return PREFIX + key.toString('hex')
+}
+
+function unpackLinkGeneral (link, PREFIX) {
+  return (link.slice(0, PREFIX.length) === PREFIX)
+    ? Buffer.from(link.slice(PREFIX.length), 'hex')
+    : false
+}
+
+module.exports = { readableBytes, uniq, isHexString, isBranchRef, packLinkGeneral, unpackLinkGeneral }

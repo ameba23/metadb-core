@@ -6,24 +6,23 @@ const through = require('through2')
 const tar = require('tar-fs')
 const log = console.log
 const crypto = require('../crypto')
-const util = require('util') // temp
+const { packLinkGeneral, unpackLinkGeneral } = require('../util')
 
 let activeDownloads = []
 let activeUploads = []
 
 const PREFIX = 'tarfs-v1://'
 
-module.exports = { publish, download }
+const packLink = (key) => packLinkGeneral(key, PREFIX)
+const unpackLink = (link) => unpackLinkGeneral(link, PREFIX)
 
-function publish (fileObjects, link, callback) {
-  if (typeof link === 'function' && !callback) {
-    callback = link
-    link = null
-  }
+module.exports = { publish, download, packLink, unpackLink }
+
+function publish (fileObjects, link, encryptionKey, callback) {
   const encoder = new crypto.CryptoEncoder({
     rnonce: Buffer.from('this is 24 bytes really!'),
     tnonce: Buffer.from('this is 24 bytes really!')
-  }, Buffer.from('this 32 bytes would you believe!'))
+  }, encryptionKey)
 
   const filePaths = fileObjects.map(f => f.filePath)
   log('published called', filePaths)
@@ -44,11 +43,15 @@ function publish (fileObjects, link, callback) {
 
   const swarm = hyperswarm()
 
-  // TODO: something cleverer for key generation, eg: use a diffie hellman shared secret
-  // between sender and reciever
-  const key = link ? unpackLink(link) : crypto.randomBytes(32)
+  let swarmKey = unpackLink(link, PREFIX)
 
-  swarm.join(key, { announce: true, lookup: true })
+  if (link.length === 64 && !swarmKey) {
+    swarmKey = Buffer.from(link, 'hex')
+    link = packLink(swarmKey, PREFIX)
+  }
+
+  const discoveryKey = crypto.keyedHash(swarmKey, 'metadb')
+  swarm.join(discoveryKey, { announce: true, lookup: true })
 
   // this will only allow one peer to connect
   swarm.once('connection', function (connection, info) {
@@ -64,7 +67,7 @@ function publish (fileObjects, link, callback) {
   input.on('end', () => {
     log('[publish] finished reading files')
     log('leaving swarm')
-    swarm.leave(key)
+    swarm.leave(discoveryKey)
     swarm.destroy()
     // TODO remove from activeUploads
   })
@@ -74,31 +77,30 @@ function publish (fileObjects, link, callback) {
     throw err // TODO callback(err)
   })
 
-  link = link || packLink(key)
-
   log(`replicating ${link}`)
   callback(null, link, swarm)
 }
 
-function download (link, downloadPath, hashes, onDownloaded, callback) {
+function download (link, downloadPath, hashes, encryptionKey, onDownloaded, callback) {
   if (activeDownloads.includes(link)) return callback(null, false)
   activeDownloads.push(link)
 
   const encoder = new crypto.CryptoEncoder({
     rnonce: Buffer.from('this is 24 bytes really!'),
     tnonce: Buffer.from('this is 24 bytes really!')
-  }, Buffer.from('this 32 bytes would you believe!'))
+  }, encryptionKey)
 
   const badHashes = []
   const verifiedHashes = []
 
-  const key = unpackLink(link)
-  if (!key) return callback(new Error(`Link does not have expected prefix ${PREFIX}`))
-  if (key.length !== 32) return callback(new Error('link key is wrong length'))
+  const swarmKey = unpackLink(link, PREFIX)
+  if (!swarmKey) return callback(new Error(`Link does not have expected prefix ${PREFIX}`))
+  if (swarmKey.length !== 32) return callback(new Error('link key is wrong length'))
 
   const files = {}
   const swarm = hyperswarm()
-  swarm.join(key, { announce: true, lookup: true })
+  const discoveryKey = crypto.keyedHash(swarmKey, 'metadb')
+  swarm.join(discoveryKey, { announce: true, lookup: true })
 
   log('[download] swarm joined')
 
@@ -151,7 +153,7 @@ function download (link, downloadPath, hashes, onDownloaded, callback) {
       log('[download] all files hashes match!')
     }
 
-    swarm.leave(key)
+    swarm.leave(discoveryKey)
     swarm.destroy()
     if (activeDownloads.includes(link)) onDownloaded(verifiedHashes, badHashes)
     activeDownloads = activeDownloads.filter(i => i !== link)
@@ -168,6 +170,8 @@ function download (link, downloadPath, hashes, onDownloaded, callback) {
   })
 
   target.on('error', (err) => {
+    // TODO this is where encryption errors will be caught
+    // (invalid tar header)
     throw err
   })
 
@@ -186,13 +190,3 @@ function download (link, downloadPath, hashes, onDownloaded, callback) {
 //     emit.apply(emitter, args)
 //   }
 // }
-
-function packLink (key) {
-  return PREFIX + key.toString('hex')
-}
-
-function unpackLink (link) {
-  return (link.slice(0, PREFIX.length) === PREFIX)
-    ? Buffer.from(link.slice(PREFIX.length), 'hex')
-    : false
-}

@@ -1,5 +1,5 @@
 const test = require('tape')
-const { publish, download } = require('../transfer/tar-stream')
+const { publish, download, packLink } = require('../transfer/tar-stream')
 const tmpDir = require('tmp').dirSync
 const path = require('path')
 const baseDir = path.join(path.resolve(__dirname), './test-media')
@@ -29,11 +29,13 @@ test('publish', t => {
 
       // const filenames = fileObjects.map(f => f.filename)
       // TODO should be file objects
-      publish(fileObjects, (err, feedKey, feedSwarm) => {
+      const encryptionKey = Buffer.from('this is definately boop32 bytes!')
+      const link = packLink(Buffer.from('this is definately boop32 bytes!'))
+      publish(fileObjects, link, encryptionKey, (err, givenLink, feedSwarm) => {
         t.error(err, 'No error on publish')
-        t.ok(feedKey, 'gives feed key')
+        t.ok(givenLink, 'gives link')
         const hashes = fileObjects.map(f => f.hash)
-        download(feedKey, downloadPath, hashes, onDownload, (err) => {
+        download(givenLink, downloadPath, hashes, encryptionKey, onDownload, (err) => {
           t.error(err, 'No error on dowload')
         })
 

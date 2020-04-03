@@ -88,6 +88,31 @@ class CryptoEncoder {
   }
 }
 
+function calculateAgreement (publicKey, keypair, context) {
+  context = context || 'metadb'
+  if (typeof publicKey === 'string') publicKey = Buffer.from(publicKey, 'hex')
+  if (typeof keypair.secretKey === 'string') keypair.secretKey = Buffer.from(keypair.secretKey, 'hex')
+  if (typeof keypair.publicKey === 'string') keypair.publicKey = Buffer.from(keypair.publicKey, 'hex')
+  if (typeof context === 'string') context = Buffer.from('context')
+
+  const curvePublicKey = sodium.sodium_malloc(sodium.crypto_box_PUBLICKEYBYTES)
+
+  const curveKeypair = {}
+  // curveKeypair.publicKey = sodium.sodium_malloc(sodium.crypto_box_PUBLICKEYBYTES)
+  curveKeypair.secretKey = sodium.sodium_malloc(sodium.crypto_box_SECRETKEYBYTES)
+
+  sodium.crypto_sign_ed25519_pk_to_curve25519(curvePublicKey, publicKey)
+  // sodium.crypto_sign_ed25519_pk_to_curve25519(curveKeypair.publicKey, keypair.publicKey)
+  sodium.crypto_sign_ed25519_sk_to_curve25519(curveKeypair.secretKey, keypair.secretKey)
+  const dhAgreement = sodium.sodium_malloc(sodium.crypto_scalarmult_BYTES)
+  sodium.crypto_scalarmult(dhAgreement, curveKeypair.SecretKey, curvePublicKey)
+
+  // TODO possibly use blake2-512 for two keys, rx and tx
+  // you can do this just by giving generichash a 64 byte buffer
+  const sortedPublicKeys = [publicKey, keypair.publicKey].sort(Buffer.compare)
+  return genericHash(Buffer.concat(sortedPublicKeys.concat([context])), genericHash(dhAgreement))
+}
+
 module.exports = {
-  sha256, keyedHash, GENERIC_HASH_BYTES, keypair, Sha256Instance, randomBytes, CryptoEncoder
+  sha256, keyedHash, GENERIC_HASH_BYTES, keypair, Sha256Instance, randomBytes, CryptoEncoder, calculateAgreement
 }
