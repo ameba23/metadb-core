@@ -34,13 +34,20 @@ module.exports = function (metadb) {
 
           const link = request.link || packLink(crypto.randomBytes(32))
           const requesterPublicKey = request.recipients.find(r => r !== metadb.keyHex)
-          const encryptionKey = crypto.calculateAgreement(requesterPublicKey, metadb.keypair, link)
+          // const encryptionKey = crypto.calculateAgreement(requesterPublicKey, metadb.keypair, link)
 
+          const encryptionKeys = {
+            staticKeyPair: {
+              publicKey: crypto.edToCurvePk(metadb.keypair.publicKey),
+              secretKey: crypto.edToCurveSk(metadb.keypair.secretKey)
+            },
+            remoteStaticKey: crypto.edToCurvePk(requesterPublicKey)
+          }
           // const filenames = fileObjects.map(f => f.file)
           if (request.link) {
-            publish(fileObjects, link, encryptionKey, cb)
+            publish(fileObjects, link, encryptionKeys, cb)
           } else {
-            publish(fileObjects, encryptionKey, (err, link, network) => {
+            publish(fileObjects, encryptionKeys, (err, link, network) => {
               if (err) return cb(err) // also publish a sorry message?
               const branch = request.msgSeq
               const recipient = branch.split('@')[0]

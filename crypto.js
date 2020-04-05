@@ -88,6 +88,18 @@ class CryptoEncoder {
   }
 }
 
+function edToCurvePk (publicKey) {
+  const curvePublicKey = sodium.sodium_malloc(sodium.crypto_box_PUBLICKEYBYTES)
+  sodium.crypto_sign_ed25519_pk_to_curve25519(curvePublicKey, publicKey)
+  return curvePublicKey
+}
+
+function edToCurveSk (secretKey) {
+  const curveSecretKey = sodium.sodium_malloc(sodium.crypto_box_SECRETKEYBYTES)
+  sodium.crypto_sign_ed25519_pk_to_curve25519(curveSecretKey, secretKey)
+  return curveSecretKey
+}
+
 function calculateAgreement (publicKey, keypair, context) {
   context = context || 'metadb'
   if (typeof publicKey === 'string') publicKey = Buffer.from(publicKey, 'hex')
@@ -114,5 +126,14 @@ function calculateAgreement (publicKey, keypair, context) {
 }
 
 module.exports = {
-  sha256, keyedHash, GENERIC_HASH_BYTES, keypair, Sha256Instance, randomBytes, CryptoEncoder, calculateAgreement
+  sha256,
+  keyedHash,
+  GENERIC_HASH_BYTES,
+  keypair,
+  Sha256Instance,
+  randomBytes,
+  CryptoEncoder,
+  calculateAgreement,
+  edToCurvePk,
+  edToCurveSk
 }
