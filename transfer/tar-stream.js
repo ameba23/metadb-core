@@ -1,13 +1,14 @@
 const hyperswarm = require('hyperswarm')
 const path = require('path')
-// const noisePeer = require('noise-peer')
+const noisePeer = require('noise-peer')
+const pump = require('pump')
 const sodium = require('sodium-native')
-const through = require('through2')
+// const through = require('through2')
 const tar = require('tar-fs')
 const log = console.log
 const crypto = require('../crypto')
 const { packLinkGeneral, unpackLinkGeneral } = require('../util')
-
+const { inspect } = require('util')
 let activeDownloads = []
 let activeUploads = []
 
@@ -18,12 +19,7 @@ const unpackLink = (link) => unpackLinkGeneral(link, PREFIX)
 
 module.exports = { publish, download, packLink, unpackLink }
 
-function publish (fileObjects, link, encryptionKey, callback) {
-  const encoder = new crypto.CryptoEncoder({
-    rnonce: Buffer.from('this is 24 bytes really!'),
-    tnonce: Buffer.from('this is 24 bytes really!')
-  }, encryptionKey)
-
+function publish (fileObjects, link, encryptionKeys, callback) {
   const filePaths = fileObjects.map(f => f.filePath)
   log('published called', filePaths)
 
@@ -55,23 +51,33 @@ function publish (fileObjects, link, encryptionKey, callback) {
 
   // this will only allow one peer to connect
   swarm.once('connection', function (connection, info) {
-    // pump(connection, input, connection)
     log('[publish] connected to peer')
-    input.pipe(through(encoder.encrypt())).pipe(connection)
+    const noiseParams = Object.assign({ pattern: 'KK' }, encryptionKeys)
+    const secureStream = noisePeer(connection, info.client, noiseParams)
+    // secureStream.pipe(input).pipe(secureStream)
+    pump(secureStream, input, secureStream, (err) => {
+      if (err) throw err
+      console.log('[publish] stream ended')
+    })
+    // input.pipe(through(encoder.encrypt())).pipe(connection)
+
+    input.on('end', () => {
+      log('[publish] finished reading files')
+      // secureStream.end((err) => {
+        // if (err) throw err // TODO
+        log('[publish] leaving swarm')
+        swarm.leave(discoveryKey)
+        swarm.destroy()
+        // TODO remove from activeUploads
+      // })
+    })
   })
 
   // input.on('data', () => {
   //   log('[publish] data block')
   // })
 
-  input.on('end', () => {
-    log('[publish] finished reading files')
-    log('leaving swarm')
-    swarm.leave(discoveryKey)
-    swarm.destroy()
-    // TODO remove from activeUploads
-  })
-
+  // logEvents(input)
   input.on('error', (err) => {
     // TODO check if error is ENOENT (no such file)
     throw err // TODO callback(err)
@@ -81,14 +87,9 @@ function publish (fileObjects, link, encryptionKey, callback) {
   callback(null, link, swarm)
 }
 
-function download (link, downloadPath, hashes, encryptionKey, onDownloaded, callback) {
+function download (link, downloadPath, hashes, encryptionKeys, onDownloaded, callback) {
   if (activeDownloads.includes(link)) return callback(null, false)
   activeDownloads.push(link)
-
-  const encoder = new crypto.CryptoEncoder({
-    rnonce: Buffer.from('this is 24 bytes really!'),
-    tnonce: Buffer.from('this is 24 bytes really!')
-  }, encryptionKey)
 
   const badHashes = []
   const verifiedHashes = []
@@ -141,32 +142,51 @@ function download (link, downloadPath, hashes, encryptionKey, onDownloaded, call
   })
   log('[download] target is ', downloadPath)
 
-  target.on('finish', () => {
-    log('[download] tar stream finished')
-    if ((verifiedHashes.length + badHashes.length) === hashes.length) {
-      log('[download] expected number of files recieved')
-    } else {
-      log('[download] tar stream ended, and not enough files present')
-    }
-
-    if (verifiedHashes.length === hashes.length) {
-      log('[download] all files hashes match!')
-    }
-
-    swarm.leave(discoveryKey)
-    swarm.destroy()
-    if (activeDownloads.includes(link)) onDownloaded(verifiedHashes, badHashes)
-    activeDownloads = activeDownloads.filter(i => i !== link)
-  })
-
   swarm.on('connection', (connection, info) => {
     log('[download] peer connected')
-    if (info.peer) log(info.peer.host)
-    // pump(socket, target, socket) // or just use .pipe?
-    connection.pipe(through(encoder.decrypt())).pipe(target)
-    connection.on('close', () => {
-      log('connection closed')
-    })
+    // only connect to them if we have a peer object
+    // TODO should do info.deduplicate(localId, remoteId)
+    if (info.peer) {
+      log('[download] remote ip is: ', info.peer.host)
+      // pump(socket, target, socket) // or just use .pipe?
+      const noiseParams = Object.assign({ pattern: 'KK' }, encryptionKeys)
+      const secureStream = noisePeer(connection, info.client, noiseParams)
+      // connection.on('data', (data) => {console.log(data.toString())})
+      // pump(secureStream, target)
+      secureStream.pipe(target)
+      secureStream.on('end', () => {
+        console.log('[download] end called')
+      })
+      // logEvents(secureStream)
+      // connection.pipe(through(encoder.decrypt())).pipe(target)
+      connection.on('close', () => {
+        log('[download] connection closed')
+      })
+
+      target.on('finish', () => {
+        log('[download] tar stream finished')
+        if ((verifiedHashes.length + badHashes.length) === hashes.length) {
+          log('[download] expected number of files recieved')
+        } else {
+          log('[download] tar stream ended, and not enough files present')
+        }
+
+        if (verifiedHashes.length === hashes.length) {
+          log('[download] all files hashes match!')
+        }
+
+        secureStream.end((err) => {
+          if (err) throw err // TODO
+          log('[download] ended secure stream.  leaving swarm')
+          swarm.destroy()
+          //         swarm.leave(discoveryKey, () => {
+          // console.log('destroying swarm')
+          //         })
+          if (activeDownloads.includes(link)) onDownloaded(verifiedHashes, badHashes)
+          activeDownloads = activeDownloads.filter(i => i !== link)
+        })
+      })
+    }
   })
 
   target.on('error', (err) => {
@@ -176,17 +196,18 @@ function download (link, downloadPath, hashes, encryptionKey, onDownloaded, call
   })
 
   target.on('close', () => {
-    log('tar stream ended')
+    log('[download] tar stream ended')
+    // tarStreamFinished()
   })
   callback(null, swarm)
 }
 
 // for debugging
-// function logEvents (emitter, name) {
-//   const emit = emitter.emit
-//   name = name ? `(${name}) ` : ''
-//   emitter.emit = (...args) => {
-//     console.log(`\x1b[33m${args[0]}\x1b[0m`, util.inspect(args.slice(1), { depth: 1, colors: true }))
-//     emit.apply(emitter, args)
-//   }
-// }
+function logEvents (emitter, name) {
+  const emit = emitter.emit
+  name = name ? `(${name}) ` : ''
+  emitter.emit = (...args) => {
+    console.log(`\x1b[33m${args[0]}\x1b[0m`, inspect(args.slice(1), { depth: 1, colors: true }))
+    emit.apply(emitter, args)
+  }
+}

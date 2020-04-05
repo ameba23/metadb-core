@@ -6,6 +6,7 @@ const baseDir = path.join(path.resolve(__dirname), './test-media')
 const fs = require('fs')
 const sodium = require('sodium-native')
 const pull = require('pull-stream')
+const noisePeer = require('noise-peer')
 
 test('publish', t => {
   const filenames = ['donkey.jpg', 'thumbs.db']
@@ -29,13 +30,22 @@ test('publish', t => {
 
       // const filenames = fileObjects.map(f => f.filename)
       // TODO should be file objects
-      const encryptionKey = Buffer.from('this is definately boop32 bytes!')
+      const aliceKeys = noisePeer.keygen()
+      const bobKeys = noisePeer.keygen()
+      const aliceOpts = {
+        staticKeyPair: aliceKeys,
+        remoteStaticKey: bobKeys.publicKey
+      }
+      const bobOpts = {
+        staticKeyPair: bobKeys,
+        remoteStaticKey: aliceKeys.publicKey
+      }
       const link = packLink(Buffer.from('this is definately boop32 bytes!'))
-      publish(fileObjects, link, encryptionKey, (err, givenLink, feedSwarm) => {
+      publish(fileObjects, link, aliceOpts, (err, givenLink, feedSwarm) => {
         t.error(err, 'No error on publish')
         t.ok(givenLink, 'gives link')
         const hashes = fileObjects.map(f => f.hash)
-        download(givenLink, downloadPath, hashes, encryptionKey, onDownload, (err) => {
+        download(givenLink, downloadPath, hashes, bobOpts, onDownload, (err) => {
           t.error(err, 'No error on dowload')
         })
 
