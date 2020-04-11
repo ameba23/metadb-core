@@ -1,5 +1,6 @@
 const pull = require('pull-stream')
 const { download } = require('../transfer/tar-stream')
+const crypto = require('../crypto')
 const log = console.log // debug
 
 module.exports = function (metadb) {
@@ -15,7 +16,16 @@ module.exports = function (metadb) {
           pull.asyncMap((reply, cb2) => {
             if (request.closed) return cb2()
             log('calling download on reply ', reply.link)
-            download(reply.link, metadb.downloadPath, request.files, onDownloaded, (err, network) => {
+            const theirPublicKey = request.recipients.find(r => r !== metadb.keyHex)
+            // const encryptionKey = crypto.calculateAgreement(theirPublicKey, metadb.keypair, reply.link)
+            const encryptionKeys = {
+              staticKeyPair: {
+                publicKey: crypto.edToCurvePk(metadb.keypair.publicKey),
+                secretKey: crypto.edToCurveSk(metadb.keypair.secretKey)
+              },
+              remoteStaticKey: crypto.edToCurvePk(theirPublicKey)
+            }
+            download(reply.link, metadb.downloadPath, request.files, encryptionKeys, onDownloaded, (err, network) => {
               if (err) return cb2(err)
               // metadb.pendingDownloads.push(network) // TODO somehow check its not already there
               cb2(null, network)

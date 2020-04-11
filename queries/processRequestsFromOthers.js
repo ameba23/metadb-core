@@ -1,6 +1,7 @@
 const pull = require('pull-stream')
 const OwnFilesFromHashes = require('./own-files-from-hashes')
-const { publish } = require('../transfer/tar-stream')
+const { publish, packLink, unpackLink } = require('../transfer/tar-stream')
+const crypto = require('../crypto')
 
 module.exports = function (metadb) {
   return function (callback) {
@@ -30,11 +31,23 @@ module.exports = function (metadb) {
             // publish a reply with an error message?
             return cb() // err?
           }
+
+          const link = request.link || packLink(crypto.randomBytes(32))
+          const requesterPublicKey = request.recipients.find(r => r !== metadb.keyHex)
+          // const encryptionKey = crypto.calculateAgreement(requesterPublicKey, metadb.keypair, link)
+
+          const encryptionKeys = {
+            staticKeyPair: {
+              publicKey: crypto.edToCurvePk(metadb.keypair.publicKey),
+              secretKey: crypto.edToCurveSk(metadb.keypair.secretKey)
+            },
+            remoteStaticKey: crypto.edToCurvePk(requesterPublicKey)
+          }
           // const filenames = fileObjects.map(f => f.file)
           if (request.link) {
-            publish(fileObjects, request.link, cb)
+            publish(fileObjects, link, encryptionKeys, cb)
           } else {
-            publish(fileObjects, (err, link, network) => {
+            publish(fileObjects, encryptionKeys, (err, link, network) => {
               if (err) return cb(err) // also publish a sorry message?
               const branch = request.msgSeq
               const recipient = branch.split('@')[0]

@@ -1,7 +1,7 @@
 const pump = require('pump')
 const hyperswarm = require('hyperswarm')
-const Protocol = require('hypercore-protocol')
-const auth = require('hypercore-peer-auth')
+// const Protocol = require('hypercore-protocol')
+// const auth = require('hypercore-peer-auth')
 const debug = require('debug')('metadb')
 const assert = require('assert')
 const { keyedHash, GENERIC_HASH_BYTES } = require('./crypto')
@@ -18,7 +18,11 @@ module.exports = function (metadb) {
     if (Array.isArray(key)) return connectMultipleSwarms(key, cb)
     if (key === '') key = DEFAULT_TOPIC
     metadb.connections[key] = _swarm(key)
-    // console.log(Object.keys(metadb.connections))
+    metadb.knownSwarms = metadb.knownSwarms || new Set()
+    if (!metadb.knownSwarms.has(key)) {
+      // TODO do a db put.
+      metadb.knownSwarms.add(key)
+    }
     if (cb) cb(null, Object.keys(metadb.connections))
   }
   return connect
@@ -29,8 +33,6 @@ module.exports = function (metadb) {
     swarm.join(key, { lookup: true, announce: true })
     log('Connected on ', key.toString('hex'), '  Listening for peers....')
     swarm.on('connection', (socket, details) => {
-      // console.log('my metadb key ', metadb.keyHex)
-      // console.log(swarm.connections)
       const isInitiator = !!details.client
       pump(socket, metadb.core.replicate(isInitiator, { live: true }), socket)
       // const protocol = new Protocol(isInitiator)
@@ -83,7 +85,7 @@ module.exports.unswarm = function (metadb) {
       metadb.connections[key].destroy()
       delete metadb.connections[key]
     }
-    log('unswarmed', Object.keys(metadb.connections))
+    log(`[swarm] Unswarmed from ${key}. Active connections are now: ${Object.keys(metadb.connections)}`)
     if (cb) cb(null, Object.keys(metadb.connections))
   }
   return unswarm

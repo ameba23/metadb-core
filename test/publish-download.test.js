@@ -1,11 +1,12 @@
 const test = require('tape')
-const { publish, download } = require('../transfer/tar-stream')
+const { publish, download, packLink } = require('../transfer/tar-stream')
 const tmpDir = require('tmp').dirSync
 const path = require('path')
 const baseDir = path.join(path.resolve(__dirname), './test-media')
 const fs = require('fs')
 const sodium = require('sodium-native')
 const pull = require('pull-stream')
+const noisePeer = require('noise-peer')
 
 test('publish', t => {
   const filenames = ['donkey.jpg', 'thumbs.db']
@@ -16,7 +17,8 @@ test('publish', t => {
       hashFile(path.join(baseDir, filename), (err, hashBuffer, size) => {
         if (err) cb(err)
         cb(null, {
-          filename,
+          filePath: filename,
+          baseDir,
           hash: hashBuffer.toString('hex')
         })
       })
@@ -26,13 +28,24 @@ test('publish', t => {
 
       const downloadPath = tmpDir().name
 
-      const filenames = fileObjects.map(f => f.filename)
+      // const filenames = fileObjects.map(f => f.filename)
       // TODO should be file objects
-      publish(filenames, baseDir, (err, feedKey, feedSwarm) => {
+      const aliceKeys = noisePeer.keygen()
+      const bobKeys = noisePeer.keygen()
+      const aliceOpts = {
+        staticKeyPair: aliceKeys,
+        remoteStaticKey: bobKeys.publicKey
+      }
+      const bobOpts = {
+        staticKeyPair: bobKeys,
+        remoteStaticKey: aliceKeys.publicKey
+      }
+      const link = packLink(Buffer.from('this is definately boop32 bytes!'))
+      publish(fileObjects, link, aliceOpts, (err, givenLink, feedSwarm) => {
         t.error(err, 'No error on publish')
-        t.ok(feedKey, 'gives feed key')
+        t.ok(givenLink, 'gives link')
         const hashes = fileObjects.map(f => f.hash)
-        download(feedKey, downloadPath, hashes, onDownload, (err) => {
+        download(givenLink, downloadPath, hashes, bobOpts, onDownload, (err) => {
           t.error(err, 'No error on dowload')
         })
 
