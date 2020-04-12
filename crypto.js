@@ -96,7 +96,7 @@ function edToCurvePk (publicKey) {
 
 function edToCurveSk (secretKey) {
   const curveSecretKey = sodium.sodium_malloc(sodium.crypto_box_SECRETKEYBYTES)
-  sodium.crypto_sign_ed25519_pk_to_curve25519(curveSecretKey, secretKey)
+  sodium.crypto_sign_ed25519_sk_to_curve25519(curveSecretKey, secretKey)
   return curveSecretKey
 }
 
