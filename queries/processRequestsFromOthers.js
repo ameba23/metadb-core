@@ -47,7 +47,7 @@ module.exports = function (metadb) {
           if (request.link) {
             publish(fileObjects, link, encryptionKeys, cb)
           } else {
-            publish(fileObjects, encryptionKeys, (err, link, network) => {
+            publish(fileObjects, link, encryptionKeys, (err, link, network) => {
               if (err) return cb(err) // also publish a sorry message?
               const branch = request.msgSeq
               const recipient = branch.split('@')[0]
