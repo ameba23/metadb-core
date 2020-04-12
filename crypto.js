@@ -89,12 +89,14 @@ class CryptoEncoder {
 }
 
 function edToCurvePk (publicKey) {
+  if (typeof publicKey === 'string') publicKey = Buffer.from(publicKey, 'hex')
   const curvePublicKey = sodium.sodium_malloc(sodium.crypto_box_PUBLICKEYBYTES)
   sodium.crypto_sign_ed25519_pk_to_curve25519(curvePublicKey, publicKey)
   return curvePublicKey
 }
 
 function edToCurveSk (secretKey) {
+  if (typeof secretKey === 'string') secretKey = Buffer.from(secretKey, 'hex')
   const curveSecretKey = sodium.sodium_malloc(sodium.crypto_box_SECRETKEYBYTES)
   sodium.crypto_sign_ed25519_sk_to_curve25519(curveSecretKey, secretKey)
   return curveSecretKey
