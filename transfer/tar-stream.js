@@ -155,7 +155,10 @@ function download (link, downloadPath, hashes, encryptionKeys, onDownloaded, cal
       // pump(secureStream, target)
       secureStream.pipe(target)
       secureStream.on('end', () => {
-        console.log('[download] end called')
+        log('[download] end called')
+      })
+      secureStream.on('error', (err) => {
+        throw err // TODO
       })
       // logEvents(secureStream)
       // connection.pipe(through(encoder.decrypt())).pipe(target)
