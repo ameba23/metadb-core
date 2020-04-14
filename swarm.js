@@ -56,7 +56,9 @@ module.exports = function (metadb) {
       //     // pump(protocol, metadb.core.replicate(isInitiator, { live: true }), protocol)
       //   }
       // })
-      socket.on('error', log)
+      socket.on('error', (err) => {
+        log('[swarm] Error from connection', err)
+      })
     })
 
     return swarm
