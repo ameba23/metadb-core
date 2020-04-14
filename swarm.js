@@ -19,10 +19,10 @@ module.exports = function (metadb) {
     if (key === '') key = DEFAULT_TOPIC
     metadb.connections[key] = _swarm(key)
     metadb.knownSwarms = metadb.knownSwarms || new Set()
-    if (!metadb.knownSwarms.has(key)) {
-      // TODO do a db put.
-      metadb.knownSwarms.add(key)
-    }
+    metadb.swarmdb.put(key, true, (err) => {
+      if (err) log('[swarm] Error writing key to db', err)
+    })
+    metadb.knownSwarms.add(key)
     if (cb) cb(null, Object.keys(metadb.connections))
   }
   return connect
@@ -87,6 +87,9 @@ module.exports.unswarm = function (metadb) {
       metadb.connections[key].destroy()
       delete metadb.connections[key]
     }
+    metadb.swarmdb.put(key, false, (err) => {
+      log('[swarm] Error writing key to db', err)
+    })
     log(`[swarm] Unswarmed from ${key}. Active connections are now: ${Object.keys(metadb.connections)}`)
     if (cb) cb(null, Object.keys(metadb.connections))
   }
@@ -101,6 +104,24 @@ module.exports.unswarm = function (metadb) {
         callback(null, swarms.slice(-1)[0])
       })
     )
+  }
+}
+
+module.exports.loadSwarms = function (metadb) {
+  return function (callback) {
+    metadb.knownSwarms = metadb.knownSwarms || new Set()
+    const swarmStream = metadb.swarmdb.createReadStream()
+    swarmStream.on('data', function (entry) {
+      metadb.knownSwarms.add(entry.key)
+      console.log('entry', entry)
+      if (entry.value) {
+        metadb.swarm(entry.key, (err) => {
+          if (err) return callback(err)
+        })
+      }
+    })
+    swarmStream.once('end', callback)
+    swarmStream.once('error', callback)
   }
 }
 

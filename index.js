@@ -71,6 +71,7 @@ class MetaDb {
 
     this.sharedb = sublevel(this.db, SHARES, { valueEncoding: 'json' })
     this.shareTotals = sublevel(this.db, 'ST')
+    this.swarmdb = sublevel(this.db, 'SW', { valueEncoding: 'json' })
     this.files = this.core.api.files
     this.peers = this.core.api.peers
     this.requests = this.core.api.requests
@@ -102,15 +103,19 @@ class MetaDb {
         }
         this.keyHex = feed.key.toString('hex')
         this.kappaPrivate.secretKey = feed.secretKey
-        this.loadConfig((err) => {
-          if (err) return cb(err)
-          if (this.localFeed.length) return cb()
-          // if there are no messages in the feed, publish a header message
-          this.localFeed.append({
-            type: 'metadb-header',
-            version: '1.0.0',
-            timestamp: Date.now()
-          }, cb)
+        // Connect to swarms if any were left connected:
+        Swarm.loadSwarms(this)((err) => {
+          if (err) log('reading swarmdb:', err) // TODO
+          this.loadConfig((err) => {
+            if (err) return cb(err)
+            if (this.localFeed.length) return cb()
+            // if there are no messages in the feed, publish a header message
+            this.localFeed.append({
+              type: 'metadb-header',
+              version: '1.0.0',
+              timestamp: Date.now()
+            }, cb)
+          })
         })
       })
     })
