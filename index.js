@@ -6,6 +6,7 @@ const level = require('level') // -mem ?
 const sublevel = require('subleveldown')
 const homeDir = require('os').homedir()
 // const thunky = require('thunky')
+const log = console.log // TODO
 
 const createFilesView = require('./views/files')
 const createPeersView = require('./views/peers')
@@ -175,8 +176,11 @@ class MetaDb {
   unswarm (key, cb) { return Swarm.unswarm(this)(key, cb) }
 
   stop (cb) {
-    // TODO: gracefully stop transfers and disconnect from swarms
-    cb()
-    process.exit(0)
+    // TODO: gracefully stop transfers
+    this.unswarm(null, (err) => {
+      if (err) log('Difficulty disconnecting from swarm', err)
+      cb()
+      process.exit(0)
+    })
   }
 }
