@@ -158,7 +158,7 @@ function download (link, downloadPath, hashes, encryptionKeys, onDownloaded, cal
         log('[download] end called')
       })
       secureStream.on('error', (err) => {
-        throw err // TODO
+        log('[download] Error from secure stream', err)
       })
       // logEvents(secureStream)
       // connection.pipe(through(encoder.decrypt())).pipe(target)
