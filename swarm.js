@@ -6,6 +6,7 @@ const debug = require('debug')('metadb')
 const assert = require('assert')
 const { keyedHash, GENERIC_HASH_BYTES } = require('./crypto')
 const { isHexString } = require('./util')
+const crypto = require('./crypto')
 const pull = require('pull-stream')
 const log = console.log
 
@@ -14,7 +15,8 @@ const DEFAULT_TOPIC = 'mouse-p2p-app' // temp TODO
 
 module.exports = function (metadb) {
   const connect = function (key, cb) {
-    if (!key) return cb(null, new Error('No topic given'))
+    // If no key given make a new 'private' swarm
+    if (!key) key = crypto.randomBytes(32).toString('hex')
     if (Array.isArray(key)) return connectMultipleSwarms(key, cb)
     if (key === '') key = DEFAULT_TOPIC
     metadb.connections[key] = _swarm(key)
@@ -28,12 +30,14 @@ module.exports = function (metadb) {
   return connect
 
   function _swarm (key) {
-    key = keyToTopic(key)
+    const topic = keyToTopic(key)
     var swarm = hyperswarm({ validatepeer: (peer) => !log(peer) })
-    swarm.join(key, { lookup: true, announce: true })
-    log('Connected on ', key.toString('hex'), '  Listening for peers....')
+    swarm.join(topic, { lookup: true, announce: true })
+    log('Connected to ', key.toString('hex'), '  Listening for peers....')
+    // metadb.events.emit('ws', JSON.stringify({ connected }))
     swarm.on('connection', (socket, details) => {
       const isInitiator = !!details.client
+      metadb.events.emit('ws', JSON.stringify({ connections: { addPeer: key.toString('hex') } }))
       pump(socket, metadb.core.replicate(isInitiator, { live: true }), socket)
       // const protocol = new Protocol(isInitiator)
       // pump(socket, protocol, socket)
@@ -58,6 +62,9 @@ module.exports = function (metadb) {
       // })
       socket.on('error', (err) => {
         log('[swarm] Error from connection', err)
+      })
+      socket.on('close', () => {
+        metadb.events.emit('ws', JSON.stringify({ connections: { removePeer: key.toString('hex') } }))
       })
     })
 
@@ -126,13 +133,9 @@ module.exports.loadSwarms = function (metadb) {
 }
 
 function keyToTopic (key) {
-  //  key can be a string, which is hashed together with a unique string for
-  // the app, and the hash used (to avoid bumping into people)
-  if (typeof key === 'string') {
-    key = (isHexString(key) && key.length === GENERIC_HASH_BYTES * 2)
-      ? Buffer.from(key, 'hex')
-      : keyedHash(key, CONTEXT)
-  }
+  //  key can be a string, which is hashed together with
+  //  a unique 'context' string.
+  if (typeof key === 'string') key = Buffer.from(key)
   assert(Buffer.isBuffer(key), 'Badly formatted key')
-  return key
+  return keyedHash(key, CONTEXT)
 }
