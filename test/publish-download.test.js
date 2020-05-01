@@ -1,5 +1,5 @@
 const test = require('tape')
-const { publish, download, packLink } = require('../transfer/tar-stream')
+const Transfer = require('../transfer/tar-stream')
 const tmpDir = require('tmp').dirSync
 const path = require('path')
 const baseDir = path.join(path.resolve(__dirname), './test-media')
@@ -7,6 +7,8 @@ const fs = require('fs')
 const sodium = require('sodium-native')
 const pull = require('pull-stream')
 const noisePeer = require('noise-peer')
+
+const { publish, download, packLink } = Transfer(console.log)
 
 test('publish', t => {
   const filenames = ['donkey.jpg', 'thumbs.db']

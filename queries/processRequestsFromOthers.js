@@ -1,9 +1,10 @@
 const pull = require('pull-stream')
 const OwnFilesFromHashes = require('./own-files-from-hashes')
-const { publish, packLink, unpackLink } = require('../transfer/tar-stream')
+const Transfer = require('../transfer/tar-stream')
 const crypto = require('../crypto')
 
 module.exports = function (metadb) {
+  const { publish, packLink } = Transfer(metadb.emitWs)
   return function (callback) {
     // requests *TO* me:
     pull(

@@ -1,9 +1,10 @@
 const pull = require('pull-stream')
-const { download } = require('../transfer/tar-stream')
+const Transfer = require('../transfer/tar-stream')
 const crypto = require('../crypto')
 const log = console.log // debug
 
 module.exports = function (metadb) {
+  const { download } = Transfer(metadb.emitWs)
   return function (callback) {
     pull(
       metadb.requests.pullFromFeedId(metadb.keyHex),
