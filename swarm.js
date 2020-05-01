@@ -7,6 +7,7 @@ const assert = require('assert')
 const { keyedHash, GENERIC_HASH_BYTES } = require('./crypto')
 const { isHexString } = require('./util')
 const crypto = require('./crypto')
+const handshake = require('./handshake')
 const pull = require('pull-stream')
 const log = console.log
 
@@ -37,45 +38,14 @@ module.exports = function (metadb) {
     swarm.on('connection', (socket, details) => {
       const isInitiator = !!details.client
       metadb.events.emit('ws', JSON.stringify({ connections: { addPeer: key.toString('hex') } }))
-      // TODO handshake to prove knowledge of swarm 'key'
-      const randomToken = crypto.randomBytes(32) // Used in handshake
-      if (isInitiator) { // if *they* are the initiator
-        socket.on('data', (data) => {
-          const messageType = data.slice(0, 16).toString()
-          if (messageType === 'metadb-handshake') {
-            console.log('[non-initiator] handshaking...')
-            socket.write(Buffer.concat([
-              Buffer.from('handshake-capabi'),
-              crypto.keyedHash(key, data.slice(16, 48)),
-              randomToken
-            ]))
-          }
-          if (messageType === 'handshake-capabi') {
-            console.log('[non-initiator] recieved final message')
-            if (!data.slice(16, 48).compare(keyedHash(key, randomToken))) {
-              console.log('handshake complete!')
-              pump(socket, metadb.core.replicate(isInitiator, { live: true }), socket)
-            }
-          }
-        })
-      } else {
-        socket.on('data', (data) => {
-          if (data.slice(0, 16).toString() === 'handshake-capabi') {
-            console.log('[initiator] capability recieved...')
-            // check it, if its valid, send one back
-            const theirHash = data.slice(16, 48)
-            if (!theirHash.compare(keyedHash(key, randomToken))) {
-              console.log('[initiator] capability verified, sending one back...')
-              socket.write(Buffer.concat([
-                Buffer.from('handshake-capabi'),
-                crypto.keyedHash(key, data.slice(48))
-              ]))
-              pump(socket, metadb.core.replicate(isInitiator, { live: true }), socket)
-            } // TODO else drop connection
-          }
-        })
-        socket.write(Buffer.concat([Buffer.from('metadb-handshake'), randomToken]))
-      }
+      // handshake to prove knowledge of swarm 'key'
+      handshake(isInitiator, socket, key, (err) => {
+        if (err) {
+          log(err)
+        } else {
+          pump(socket, metadb.core.replicate(isInitiator, { live: true }), socket)
+        }
+      })
 
       // TODO peer authentication not working
       // const protocol = new Protocol(isInitiator)
