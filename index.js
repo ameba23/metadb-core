@@ -5,6 +5,7 @@ const KappaPrivate = require('kappa-private')
 const level = require('level') // -mem ?
 const sublevel = require('subleveldown')
 const homeDir = require('os').homedir()
+const EventEmitter = require('events').EventEmitter
 // const thunky = require('thunky')
 const log = console.log // TODO
 
@@ -15,6 +16,7 @@ const createRequestsView = require('./views/requests')
 const IndexFiles = require('./index-files')
 const Swarm = require('./swarm')
 const config = require('./config')
+const crypto = require('./crypto')
 const Query = require('./queries')
 const Publish = require('./publish')
 
@@ -37,7 +39,7 @@ class MetaDb {
     this.kappaPrivate = KappaPrivate()
     this.isTest = opts.test
 
-    // TODO downloadPath should be retrieved from and saves to config file
+    // TODO downloadPath should be retrieved from and saved to config file
     this.downloadPath = opts.test
       ? path.join(this.storage, 'downloads')
       : path.join(this.storage, 'downloads') // os.homedir(), 'Downloads' ?
@@ -55,9 +57,14 @@ class MetaDb {
     this.activeUploads = []
 
     this.core = kappa(
-      DB(this.storage),
-      { valueEncoding: this.kappaPrivate.encoder() }
+      DB(this.storage), {
+        valueEncoding: this.kappaPrivate.encoder(),
+        // multifeed gets a generic key, so we can use a single
+        // instance for multiple 'swarms'
+        encryptionKey: crypto.keyedHash('metadb')
+      }
     )
+
     this.db = level(VIEWS(this.storage))
     this.core.use('files', createFilesView(
       sublevel(this.db, FILES, { valueEncoding: 'json' })
@@ -75,7 +82,10 @@ class MetaDb {
     this.files = this.core.api.files
     this.peers = this.core.api.peers
     this.requests = this.core.api.requests
-
+    this.events = new EventEmitter()
+    // this.events.on('ws', () => {
+    //   console.log('message locally')
+    // })
     this.files.events.on('update', () => {})
     this.peers.events.on('update', () => {})
     this.requests.events.on('update', (messagesFound) => {
@@ -103,6 +113,7 @@ class MetaDb {
         }
         this.keyHex = feed.key.toString('hex')
         this.kappaPrivate.secretKey = feed.secretKey
+        this.events.emit('ws', 'ready')
         // Connect to swarms if any were left connected:
         Swarm.loadSwarms(this)((err) => {
           if (err) log('reading swarmdb:', err) // TODO
@@ -187,5 +198,9 @@ class MetaDb {
       cb()
       process.exit(0)
     })
+  }
+
+  emitWs (messageObject) {
+    this.events.emit('ws', JSON.stringify(messageObject))
   }
 }
