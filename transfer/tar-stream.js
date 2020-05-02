@@ -59,7 +59,7 @@ module.exports = function (logObject = () => {}) {
       const secureStream = noisePeer(connection, info.client, noiseParams)
       // secureStream.pipe(input).pipe(secureStream)
       pump(secureStream, input, secureStream, (err) => {
-        if (err) throw err // TODO log error, dont throw
+        if (err) log('[publish] error when stream ended', err)
         console.log('[publish] stream ended')
       })
       // input.pipe(through(encoder.encrypt())).pipe(connection)
