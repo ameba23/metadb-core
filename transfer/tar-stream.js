@@ -54,7 +54,7 @@ module.exports = function (logObject = () => {}) {
 
     // this will only allow one peer to connect
     swarm.once('connection', function (connection, info) {
-      log('[publish] connected to peer')
+      log('[publish] connected to peer', info.client)
       const noiseParams = Object.assign({ pattern: 'KK' }, encryptionKeys)
       const secureStream = noisePeer(connection, info.client, noiseParams)
       // secureStream.pipe(input).pipe(secureStream)
@@ -76,9 +76,9 @@ module.exports = function (logObject = () => {}) {
       })
     })
 
-    // input.on('data', () => {
-    //   log('[publish] data block')
-    // })
+    input.on('data', () => {
+      log('[publish] data block')
+    })
 
     // logEvents(input)
     input.on('error', (err) => {
@@ -150,14 +150,15 @@ module.exports = function (logObject = () => {}) {
     log('[download] target is ', downloadPath)
 
     swarm.on('connection', (connection, info) => {
-      log('[download] peer connected')
+      log('[download] peer connected ', info.client)
       // only connect to them if we have a peer object
       // TODO should do info.deduplicate(localId, remoteId)
       if (info.peer) {
-        log('[download] remote ip is: ', info.peer.host)
+        log('[download] remote ip is: ', info.peer.host, info.client)
         // pump(socket, target, socket) // or just use .pipe?
         const noiseParams = Object.assign({ pattern: 'KK' }, encryptionKeys)
         const secureStream = noisePeer(connection, info.client, noiseParams)
+        secureStream.on('data', (d)=> {console.log(d.length)})
         // connection.on('data', (data) => {console.log(data.toString())})
         // pump(secureStream, target)
         secureStream.pipe(target)
@@ -172,7 +173,6 @@ module.exports = function (logObject = () => {}) {
         connection.on('close', () => {
           log('[download] connection closed')
         })
-
         target.on('finish', () => {
           log('[download] tar stream finished')
           if ((verifiedHashes.length + badHashes.length) === hashes.length) {
@@ -198,7 +198,6 @@ module.exports = function (logObject = () => {}) {
         })
       }
     })
-
     target.on('error', (err) => {
       // TODO this is where encryption errors will be caught
       // (invalid tar header)

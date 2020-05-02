@@ -4,7 +4,10 @@ const crypto = require('../crypto')
 const log = console.log // debug
 
 module.exports = function (metadb) {
-  const { download } = Transfer(metadb.emitWs)
+  // const { download } = Transfer(metadb.emitWs)
+  const { download } = Transfer((message) => {
+    metadb.events.emit('ws', JSON.stringify(message))
+  })
   return function (callback) {
     pull(
       metadb.requests.pullFromFeedId(metadb.keyHex),
