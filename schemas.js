@@ -84,6 +84,14 @@ const isFileComment = validator({
     comment: {
       required: false,
       type: 'string'
+    },
+    star: {
+      required: false,
+      type: 'boolean'
+    },
+    unstar: {
+      required: false,
+      type: 'boolean'
     }
   }
 })
@@ -108,7 +116,7 @@ const isAddFile = validator({
       type: 'number' // TODO gt 0
     },
     metadata: {
-      required: false, // ?
+      required: false,
       type: 'object' // TODO: specific fields eg: mimeType
     }
   }

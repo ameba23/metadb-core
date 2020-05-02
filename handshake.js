@@ -21,9 +21,9 @@ module.exports = function (theyAreInitiator, stream, key, callback) {
       }
       if (messageType === 'handshake-capabi' && data.length === 48) {
         console.log('[non-initiator] recieved final message')
+        stream.removeListener('data', handleMessage)
         if (data.slice(16, 48).compare(crypto.keyedHash(key, randomToken))) return callback(new Error('Unable to verify capability'))
         console.log('handshake complete!')
-        stream.removeListener('data', handleMessage)
         return callback()
       }
     }
@@ -31,13 +31,18 @@ module.exports = function (theyAreInitiator, stream, key, callback) {
     stream.on('data', handleMessage)
   } else {
     const messageHandler = function (data) {
-      if (data.length < 16) return callback(new Error('Handshake unsuccessful'))
+      if (data.length < 16) {
+        stream.removeListener('data', messageHandler)
+        return callback(new Error('Handshake unsuccessful'))
+      }
       if (data.slice(0, 16).toString() === 'handshake-capabi') {
         console.log('[initiator] capability recieved...')
         // check it, if its valid, send one back
         const theirHash = data.slice(16, 48)
-
-        if (theirHash.compare(crypto.keyedHash(key, randomToken))) return callback(new Error('Unable to verify capability'))
+        if (theirHash.compare(crypto.keyedHash(key, randomToken))) {
+          stream.removeListener('data', messageHandler)
+          return callback(new Error('Unable to verify capability'))
+        }
         console.log('[initiator] capability verified, sending one back...')
         stream.write(Buffer.concat([
           Buffer.from('handshake-capabi'),

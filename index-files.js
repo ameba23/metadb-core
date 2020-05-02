@@ -15,6 +15,7 @@ const SCHEMAVERSION = '1.0.0'
 
 // TODO add a listener for pause/resume, cancel events
 module.exports = function indexFiles (metadb) {
+  // Add files in the given directory to the index
   return function (dir, opts = {}, onStarting, onFinished) {
     if (!metadb.localFeed) return onStarting(new Error('No local feed, call ready()'))
     if (typeof opts === 'function' && !onFinished) {

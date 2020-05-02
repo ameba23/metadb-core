@@ -33,7 +33,7 @@ module.exports = function (logObject = () => {}) {
     const input = tar.pack('/', {
       entries: fileObjects.map(f => path.join(f.baseDir, f.filePath)),
       map: function (header) {
-        // Remove the private part of the dir
+        // Remove the private part of the path name
         const fileObject = fileObjects.find(f => path.join(f.baseDir, f.filePath) === header.name)
         header.name = fileObject.filePath
         return header
