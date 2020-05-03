@@ -30,15 +30,6 @@ module.exports = function (logObject = () => {}) {
     if (activeUploads.includes(filePaths.toString())) return callback(null, false)
     activeUploads.push(filePaths.toString()) // TODO this should be a db write
 
-    const input = tar.pack('/', {
-      entries: fileObjects.map(f => path.join(f.baseDir, f.filePath)),
-      map: function (header) {
-        // Remove the private part of the path name
-        const fileObject = fileObjects.find(f => path.join(f.baseDir, f.filePath) === header.name)
-        header.name = fileObject.filePath
-        return header
-      }
-    })
 
     const swarm = hyperswarm()
 
@@ -58,6 +49,17 @@ module.exports = function (logObject = () => {}) {
       const noiseParams = Object.assign({ pattern: 'KK' }, encryptionKeys)
       const secureStream = noisePeer(connection, info.client, noiseParams)
       // secureStream.pipe(input).pipe(secureStream)
+
+      const input = tar.pack('/', {
+        entries: fileObjects.map(f => path.join(f.baseDir, f.filePath)),
+        map: function (header) {
+          // Remove the private part of the path name
+          const fileObject = fileObjects.find(f => path.join(f.baseDir, f.filePath) === header.name)
+          header.name = fileObject.filePath
+          return header
+        }
+      })
+
       pump(secureStream, input, secureStream, (err) => {
         if (err) log('[publish] error when stream ended', err)
         console.log('[publish] stream ended')
@@ -73,18 +75,18 @@ module.exports = function (logObject = () => {}) {
         swarm.destroy()
         // TODO remove from activeUploads
         // })
+        input.on('data', (data) => {
+          log('[publish] data block', data.length)
+        })
+
+        // logEvents(input)
+        input.on('error', (err) => {
+          // TODO check if error is ENOENT (no such file)
+          throw err // TODO callback(err)
+        })
       })
     })
 
-    input.on('data', () => {
-      log('[publish] data block')
-    })
-
-    // logEvents(input)
-    input.on('error', (err) => {
-      // TODO check if error is ENOENT (no such file)
-      throw err // TODO callback(err)
-    })
 
     log(`replicating ${link}`)
     callback(null, link, swarm)
