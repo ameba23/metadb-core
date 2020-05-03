@@ -62,7 +62,7 @@ module.exports = function (logObject = () => {}) {
 
       pump(secureStream, input, secureStream, (err) => {
         if (err) log('[publish] error when stream ended', err)
-        console.log('[publish] stream ended')
+        log('[publish] stream ended')
       })
       // input.pipe(through(encoder.encrypt())).pipe(connection)
 
@@ -160,8 +160,6 @@ module.exports = function (logObject = () => {}) {
         // pump(socket, target, socket) // or just use .pipe?
         const noiseParams = Object.assign({ pattern: 'KK' }, encryptionKeys)
         const secureStream = noisePeer(connection, info.client, noiseParams)
-        secureStream.on('data', (d)=> {console.log(d.length)})
-        // connection.on('data', (data) => {console.log(data.toString())})
         // pump(secureStream, target)
         secureStream.pipe(target)
         secureStream.on('end', () => {
