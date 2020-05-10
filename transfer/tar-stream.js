@@ -19,10 +19,14 @@ const packLink = (key) => packLinkGeneral(key, PREFIX)
 const unpackLink = (link) => unpackLinkGeneral(link, PREFIX)
 
 // Takes a logger fn which is used to pass stuff to the front end via websockets
-module.exports = function (logObject = () => {}) {
-  assert(typeof logObject === 'function', 'logObject, if given must be a function')
+module.exports = function (logObjectGeneric = () => {}) {
+  assert(typeof logObjectGeneric === 'function', 'logObject, if given must be a function')
 
   function publish (fileObjects, link, encryptionKeys, callback) {
+    function logObject (object) {
+      logObjectGeneric({ upload: object })
+    }
+
     const filePaths = fileObjects.map(f => f.filePath)
     log('published called', filePaths)
 
@@ -93,6 +97,10 @@ module.exports = function (logObject = () => {}) {
   }
 
   function download (link, downloadPath, hashes, encryptionKeys, onDownloaded, callback) {
+    function logObject (object) {
+      logObjectGeneric({ download: object })
+    }
+
     if (activeDownloads.includes(link)) return callback(null, false)
     activeDownloads.push(link)
 
@@ -126,18 +134,18 @@ module.exports = function (logObject = () => {}) {
 
           files[name].blocksRecieved = files[name].blocksRecieved || 0
           log(`[download] ${name} chunk ${files[name].blocksRecieved} added, ${files[name].bytesRecieved} of ${header.size} (${Math.round(files[name].bytesRecieved / header.size * 100)}%) `)
-          logObject({ name, bytesRecieved: files[name].bytesRecieved, size: header.size })
+          logObject({ name: { bytesRecieved: files[name].bytesRecieved, size: header.size } })
           files[name].blocksRecieved += 1
 
           if (files[name].bytesRecieved === header.size) {
             log(`file ${name} downloaded`)
-            logObject({ name, downloaded: true })
+            logObject({ name: { downloaded: true } })
             const hashToCheck = sodium.sodium_malloc(sodium.crypto_hash_sha256_BYTES)
             files[name].hashToCheckInstance.final(hashToCheck)
             // verify hash
             if (hashes.includes(hashToCheck.toString('hex'))) {
               log(`hash for ${header.name} verified!`)
-              logObject({ name, verified: true })
+              logObject({ name: { verified: true } })
               verifiedHashes.push(hashToCheck.toString('hex'))
             } else {
               log(`hash for ${header.name} does not match!`)
