@@ -34,7 +34,6 @@ module.exports = function (logObjectGeneric = () => {}) {
     if (activeUploads.includes(filePaths.toString())) return callback(null, false)
     activeUploads.push(filePaths.toString()) // TODO this should be a db write
 
-
     const swarm = hyperswarm()
 
     let swarmKey = unpackLink(link, PREFIX)
@@ -91,7 +90,6 @@ module.exports = function (logObjectGeneric = () => {}) {
       })
     })
 
-
     log(`replicating ${link}`)
     callback(null, link, swarm)
   }
@@ -134,22 +132,26 @@ module.exports = function (logObjectGeneric = () => {}) {
 
           files[name].blocksRecieved = files[name].blocksRecieved || 0
           log(`[download] ${name} chunk ${files[name].blocksRecieved} added, ${files[name].bytesRecieved} of ${header.size} (${Math.round(files[name].bytesRecieved / header.size * 100)}%) `)
-          logObject({ name: { bytesRecieved: files[name].bytesRecieved, size: header.size } })
+          files[name].size = header.size
+          logObject(files)
           files[name].blocksRecieved += 1
 
           if (files[name].bytesRecieved === header.size) {
             log(`file ${name} downloaded`)
-            logObject({ name: { downloaded: true } })
+            files[name].downloaded = true
+            logObject(files)
             const hashToCheck = sodium.sodium_malloc(sodium.crypto_hash_sha256_BYTES)
             files[name].hashToCheckInstance.final(hashToCheck)
             // verify hash
             if (hashes.includes(hashToCheck.toString('hex'))) {
               log(`hash for ${header.name} verified!`)
-              logObject({ name: { verified: true } })
+              files[name].verified = true
+              logObject(files)
               verifiedHashes.push(hashToCheck.toString('hex'))
             } else {
               log(`hash for ${header.name} does not match!`)
-              logObject({ name, verified: false })
+              files[name].cannotVerify = true
+              logObject(files)
               badHashes.push(hashToCheck)
             }
           }
