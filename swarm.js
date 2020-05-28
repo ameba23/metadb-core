@@ -4,6 +4,7 @@ const hyperswarm = require('hyperswarm')
 // const auth = require('hypercore-peer-auth')
 // const debug = require('debug')('metadb')
 const assert = require('assert')
+const multiplex = require('multiplex')
 const { keyedHash, GENERIC_HASH_BYTES } = require('./crypto')
 const { isHexString } = require('./util')
 const crypto = require('./crypto')
@@ -43,7 +44,10 @@ module.exports = function (metadb) {
         if (err) {
           log(err)
         } else {
-          pump(socket, metadb.core.replicate(isInitiator, { live: true }), socket)
+          const plex = multiplex()
+          const mainStream = plex.createSharedStream('metadb')
+          pump(socket, plex, socket)
+          pump(mainStream, metadb.core.replicate(isInitiator, { live: true }), mainStream)
         }
       })
 

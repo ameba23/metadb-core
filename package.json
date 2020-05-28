@@ -22,6 +22,7 @@
     "metadata-extract": "git+https://git@github.com/ameba23/metadata-extract.git",
     "minimatch": "^3.0.4",
     "mkdirp": "^0.5.1",
+    "multiplex": "^6.7.0",
     "noise-peer": "^1.1.0",
     "pull-level": "^2.0.4",
     "pull-stream": "^3.6.9",
