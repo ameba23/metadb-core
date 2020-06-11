@@ -39,15 +39,20 @@ module.exports = function (metadb) {
     swarm.on('connection', (socket, details) => {
       const isInitiator = !!details.client
       metadb.events.emit('ws', JSON.stringify({ connections: { addPeer: key.toString('hex') } }))
-      // handshake to prove knowledge of swarm 'key'
-      handshake(isInitiator, socket, key, (err) => {
+      const plex = multiplex()
+      const mainStream = plex.createSharedStream('metadb')
+      const handshakeStream = plex.createSharedStream('handshake')
+      // const transferStream = plex.createSharedStream('file-transfer')
+      pump(socket, plex, socket)
+      // handshake proves knowledge of swarm 'key'
+      handshake(metadb.keypair, !isInitiator, handshakeStream, key, (err, remotePk) => {
         if (err) {
           log(err)
         } else {
-          const plex = multiplex()
-          const mainStream = plex.createSharedStream('metadb')
-          pump(socket, plex, socket)
-          pump(mainStream, metadb.core.replicate(isInitiator, { live: true }), mainStream)
+          // console.log('Dedup:', details.deduplicate(metadb.keypair.publicKey, remotePk))
+          const deduplicated = details.deduplicate(metadb.keypair.publicKey, remotePk)
+          console.log('Deduplicated:', deduplicated)
+          if (!deduplicated) pump(mainStream, metadb.core.replicate(isInitiator, { live: true }), mainStream)
         }
       })
 

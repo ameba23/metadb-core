@@ -3,8 +3,9 @@ const assert = require('assert')
 const sodium = require('sodium-native')
 const log = console.log
 const concat = Buffer.concat
-const EPHPKLENGTH = sodium.crypto_scalarmult_BYTES
-const SECONDPASSLENGTH = sodium.crypto_sign_PUBLICKEYBYTES + sodium.crypto_sign_BYTES + sodium.crypto_secretbox_MACBYTES
+const EMPTY = Buffer.from('')
+const FIRSTPASSLENGTH = sodium.crypto_scalarmult_BYTES + sodium.crypto_secretbox_MACBYTES + sodium.crypto_secretbox_NONCEBYTES
+const SECONDPASSLENGTH = sodium.crypto_sign_PUBLICKEYBYTES + sodium.crypto_sign_BYTES + sodium.crypto_secretbox_MACBYTES + sodium.crypto_secretbox_NONCEBYTES
 
 // Handshake - ephemeral keys are exchanged, then public signing keys along with a  fresh signature
 
@@ -28,55 +29,61 @@ const SECONDPASSLENGTH = sodium.crypto_sign_PUBLICKEYBYTES + sodium.crypto_sign_
 module.exports = function (ourStaticKeypair, weAreInitiator, stream, swarmKey, callback) {
   const ephKeypair = curveKeypair()
   const sign = (message) => signDetached(message, ourStaticKeypair.secretKey)
-  const send = stream.write
-  let theirStaticPK
+  let remoteStaticPK
+  let remoteEphPk
 
   // add handshake version number to key
   const key = crypto.genericHash(Buffer.from('metadb handshake version 0.0.1'), swarmKey)
 
   const messageHandler = function (data) {
-    let theirEphPk
     try {
-      if (data.length === EPHPKLENGTH + sodium.crypto_secretbox_MACBYTES) {
+      if (data.length === FIRSTPASSLENGTH && !remoteEphPk) {
+        // console.log(weAreInitiator, 'eph key recvd')
         // assume this is an ephemeral key
-        theirEphPk = open(data, key)
+        remoteEphPk = open(data, key)
+        assert(remoteEphPk, 'Handshake decryption error')
+        // console.log(theirEphPk, 'their key')
         if (weAreInitiator) {
           // respond with 2nd pass
-          const plain = concat([ourStaticKeypair.publicKey, sign(concat([ephKeypair.publickey, theirEphPk]))])
-          const encryptionKey = crypto.genericHash(concat([key, scalar(ephKeypair.secretKey, theirEphPk)]))
-          send(box(plain, encryptionKey))
+          const plain = concat([ourStaticKeypair.publicKey, sign(concat([ephKeypair.publicKey, remoteEphPk]))])
+          const encryptionKey = crypto.genericHash(concat([key, scalar(ephKeypair.secretKey, remoteEphPk)]))
+          stream.write(box(plain, encryptionKey))
         } else {
           // Respond with our eph key
-          send(box(ephKeypair.publicKey, key))
+          stream.write(box(ephKeypair.publicKey, key))
         }
       } else {
         // Assume this is a second pass message
         assert(data.length === SECONDPASSLENGTH, 'Handshake failed') // TODO
-        const encryptionKey = concat([
+        log(weAreInitiator, ourStaticKeypair.publicKey.slice(28).toString('hex'), '2nd pass recvd')
+        const encryptionKey = crypto.genericHash(concat([
           key,
-          scalar(ephKeypair.secretKey, theirEphPk),
-          weAreInitiator ? Buffer.from('') : scalar(ephKeypair.secretKey, crypto.edToCurvePk(theirStaticPK))
-        ])
+          scalar(ephKeypair.secretKey, remoteEphPk),
+          weAreInitiator ? scalar(crypto.edToCurveSk(ourStaticKeypair.secretKey), remoteEphPk) : EMPTY
+        ]))
 
         const plain = open(data, encryptionKey)
-        theirStaticPK = plain.slice(0, sodium.crypto_sign_PUBLICKEYBYTES)
+        assert(plain, 'Handshake decryption error')
+        remoteStaticPK = plain.slice(0, sodium.crypto_sign_PUBLICKEYBYTES)
         const message = concat([
-          theirEphPk,
-          ephKeypair.publickey,
-          weAreInitiator ? Buffer.from('') : ourStaticKeypair.publicKey
+          remoteEphPk,
+          ephKeypair.publicKey,
+          weAreInitiator ? ourStaticKeypair.publicKey : EMPTY
         ])
-        assert(validate(plain.slice(sodium.crypto_sign_PUBLICKEYBYTES), message, theirStaticPK), 'could not validate signature')
+        assert(validate(plain.slice(sodium.crypto_sign_PUBLICKEYBYTES), message, remoteStaticPK), 'could not validate signature')
 
         if (!weAreInitiator) {
+          // console.log(weAreInitiator, 'writing 2nd pass...')
           // Respond with 2nd pass
-          const plain = concat([ourStaticKeypair.publicKey, sign(concat([ephKeypair.publickey, theirEphPk, theirStaticPK]))])
-          const encryptionKey = crypto.genericHash(concat([key, scalar(ephKeypair.secretKey, theirEphPk), scalar(ephKeypair.secretKey, crypto.edToCurvePk(theirStaticPK))]))
-          send(box(plain, encryptionKey))
+          const plain = concat([ourStaticKeypair.publicKey, sign(concat([ephKeypair.publicKey, remoteEphPk, remoteStaticPK]))])
+          const encryptionKey = crypto.genericHash(concat([key, scalar(ephKeypair.secretKey, remoteEphPk), scalar(ephKeypair.secretKey, crypto.edToCurvePk(remoteStaticPK))]))
+          stream.write(box(plain, encryptionKey))
+          // console.log('written:', box(plain, encryptionKey).slice(-5).toString('hex'))
         }
-
+        log(weAreInitiator, 'finished!')
         // callback with success
         stream.removeListener('data', messageHandler)
-        return callback(null, theirStaticPK)
+        return callback(null, remoteStaticPK)
       }
     } catch (err) {
       stream.removeListener('data', messageHandler)
@@ -85,7 +92,7 @@ module.exports = function (ourStaticKeypair, weAreInitiator, stream, swarmKey, c
   }
 
   stream.on('data', messageHandler)
-  if (weAreInitiator) send(box(ephKeypair.publicKey, key))
+  if (weAreInitiator) stream.write(box(ephKeypair.publicKey, key))
 }
 
 // Crypto:
