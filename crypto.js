@@ -132,6 +132,7 @@ module.exports = {
   keyedHash,
   GENERIC_HASH_BYTES,
   keypair,
+  genericHash,
   Sha256Instance,
   randomBytes,
   CryptoEncoder,
