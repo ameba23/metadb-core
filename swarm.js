@@ -11,6 +11,7 @@ const crypto = require('./crypto')
 const handshake = require('./handshake')
 const pull = require('pull-stream')
 const log = console.log
+const fileTransfer = require('./file-transfer')
 
 const CONTEXT = 'metadb'
 const DEFAULT_TOPIC = 'mouse-p2p-app' // temp TODO
@@ -42,43 +43,21 @@ module.exports = function (metadb) {
       const plex = multiplex()
       const mainStream = plex.createSharedStream('metadb')
       const handshakeStream = plex.createSharedStream('handshake')
-      // const transferStream = plex.createSharedStream('file-transfer')
+      // TODO we should be able to re-use the handshake steam and only need 2
+      const transferStream = plex.createSharedStream('file-transfer')
       pump(socket, plex, socket)
-      // handshake proves knowledge of swarm 'key'
+      // handshake gets remote pk and proves knowledge of swarm 'key'
       handshake(metadb.keypair, !isInitiator, handshakeStream, key, (err, remotePk) => {
         if (err) {
           log(err)
         } else {
-          // console.log('Dedup:', details.deduplicate(metadb.keypair.publicKey, remotePk))
           const deduplicated = details.deduplicate(metadb.keypair.publicKey, remotePk)
           console.log('Deduplicated:', deduplicated)
           if (!deduplicated) pump(mainStream, metadb.core.replicate(isInitiator, { live: true }), mainStream)
+          metadb.connectedPeers[remotePk.toString('hex')] = fileTransfer(metadb)(remotePk, transferStream)
         }
       })
 
-      // TODO peer authentication not working
-      // const protocol = new Protocol(isInitiator)
-      // pump(socket, protocol, socket)
-      // auth(protocol, {
-      //   authKeyPair: metadb.keypair,
-      //   onauthenticate (peerAuthKey, cb) {
-      //     if (!metadb.connectedPeers.includes(peerAuthKey.toString('hex'))) metadb.connectedPeers.push(peerAuthKey.toString('hex'))
-      //
-      //     log('New peer connected with key ', peerAuthKey.toString('hex'))
-      //     cb(null, true)
-      //     socket.on('close', () => {
-      //       log('Peer has disconnected ', peerAuthKey.toString('hex'))
-      //       metadb.connectedPeers = metadb.connectedPeers.filter(p => p !== peerAuthKey.toString('hex'))
-      //     })
-      //   },
-      //   onprotocol (protocol) {
-      //     // metadb.core.replicate(isInitiator, { live: true, stream: protocol })
-      //     metadb.core.replicate(isInitiator, { live: true }).pipe(protocol)
-      //
-      //     // pump(protocol, metadb.core.replicate(isInitiator, { live: true }), protocol)
-      //   }
-      // })
-      //
       socket.on('error', (err) => {
         log('[swarm] Error from connection', err)
       })
