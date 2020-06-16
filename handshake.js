@@ -7,7 +7,7 @@ const EMPTY = Buffer.from('')
 const FIRSTPASSLENGTH = sodium.crypto_scalarmult_BYTES + sodium.crypto_secretbox_MACBYTES + sodium.crypto_secretbox_NONCEBYTES
 const SECONDPASSLENGTH = sodium.crypto_sign_PUBLICKEYBYTES + sodium.crypto_sign_BYTES + sodium.crypto_secretbox_MACBYTES + sodium.crypto_secretbox_NONCEBYTES
 
-// Handshake - ephemeral keys are exchanged, then public signing keys along with a  fresh signature
+// Handshake - ephemeral keys are exchanged, then public signing keys along with a fresh signature
 
 // The swarm key is added to prove that both parties know the 'key' of the swarm
 // hypercore protocol already does this, but the way multifeed
@@ -27,24 +27,28 @@ const SECONDPASSLENGTH = sodium.crypto_sign_PUBLICKEYBYTES + sodium.crypto_sign_
 // b: box[k|a.b|b.A] ( B | sign(a|b|A) )
 
 module.exports = function (ourStaticKeypair, weAreInitiator, stream, swarmKey, callback) {
+  // TODO this function will be passed in:
+  const onPeer = function (remoteStaticPk, callback) {
+    // Accept everybody
+    return callback(null, true)
+  }
   const ephKeypair = curveKeypair()
   const sign = (message) => signDetached(message, ourStaticKeypair.secretKey)
   let remoteStaticPK
   let remoteEphPk
 
-  // add handshake version number to key
+  // Add handshake version number to key
   const key = crypto.genericHash(Buffer.from('metadb handshake version 0.0.1'), swarmKey)
 
   const messageHandler = function (data) {
     try {
       if (data.length === FIRSTPASSLENGTH && !remoteEphPk) {
-        // console.log(weAreInitiator, 'eph key recvd')
-        // assume this is an ephemeral key
+        // Assume this is an ephemeral key and attempt to decrypt it
         remoteEphPk = open(data, key)
         assert(remoteEphPk, 'Handshake decryption error')
-        // console.log(theirEphPk, 'their key')
+
         if (weAreInitiator) {
-          // respond with 2nd pass
+          // Respond with 2nd pass
           const plain = concat([ourStaticKeypair.publicKey, sign(concat([ephKeypair.publicKey, remoteEphPk]))])
           const encryptionKey = crypto.genericHash(concat([key, scalar(ephKeypair.secretKey, remoteEphPk)]))
           stream.write(box(plain, encryptionKey))
@@ -70,20 +74,25 @@ module.exports = function (ourStaticKeypair, weAreInitiator, stream, swarmKey, c
           ephKeypair.publicKey,
           weAreInitiator ? ourStaticKeypair.publicKey : EMPTY
         ])
-        assert(validate(plain.slice(sodium.crypto_sign_PUBLICKEYBYTES), message, remoteStaticPK), 'could not validate signature')
+        assert(validate(plain.slice(sodium.crypto_sign_PUBLICKEYBYTES), message, remoteStaticPK), 'Could not validate signature')
 
-        if (!weAreInitiator) {
-          // console.log(weAreInitiator, 'writing 2nd pass...')
-          // Respond with 2nd pass
-          const plain = concat([ourStaticKeypair.publicKey, sign(concat([ephKeypair.publicKey, remoteEphPk, remoteStaticPK]))])
-          const encryptionKey = crypto.genericHash(concat([key, scalar(ephKeypair.secretKey, remoteEphPk), scalar(ephKeypair.secretKey, crypto.edToCurvePk(remoteStaticPK))]))
-          stream.write(box(plain, encryptionKey))
-          // console.log('written:', box(plain, encryptionKey).slice(-5).toString('hex'))
-        }
-        log(weAreInitiator, 'finished!')
-        // callback with success
-        stream.removeListener('data', messageHandler)
-        return callback(null, remoteStaticPK)
+        // Call the hook to decide if we want to connect to this peer
+        onPeer(remoteStaticPK, (err, accepted) => {
+          if (err) throw err
+          assert(accepted, 'Remote peer not accepted')
+
+          if (!weAreInitiator) {
+            // Respond with 2nd pass
+            const plain = concat([ourStaticKeypair.publicKey, sign(concat([ephKeypair.publicKey, remoteEphPk, remoteStaticPK]))])
+            const encryptionKey = crypto.genericHash(concat([key, scalar(ephKeypair.secretKey, remoteEphPk), scalar(ephKeypair.secretKey, crypto.edToCurvePk(remoteStaticPK))]))
+            stream.write(box(plain, encryptionKey))
+            // console.log('written:', box(plain, encryptionKey).slice(-5).toString('hex'))
+          }
+          log(weAreInitiator, 'finished!')
+          // Callback with success
+          stream.removeListener('data', messageHandler)
+          return callback(null, remoteStaticPK)
+        })
       }
     } catch (err) {
       stream.removeListener('data', messageHandler)
