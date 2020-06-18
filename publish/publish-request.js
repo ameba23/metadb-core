@@ -1,13 +1,16 @@
 const pull = require('pull-stream')
 const assert = require('assert')
 const { uniq, isHexString } = require('../util')
+const crypto = require('crypto')
 const SHA256_BYTES = 32 // TODO
-const VERSION = '1.0.0'
+// const VERSION = '1.0.0'
+
+// add the requested files to local db
+// if we are connected to the peer, pass the requests to them
 
 module.exports = function (metadb) {
   return function publishRequest (files, callback) {
     try {
-      assert(metadb.localFeed, 'No local feed')
       if (typeof files === 'string') files = [files]
       assert(Array.isArray(files), 'Files must be an array')
       files.forEach((file) => {
@@ -15,25 +18,50 @@ module.exports = function (metadb) {
       })
     } catch (err) { return callback(err) }
 
+    const queuedRequests = {}
+
     pull(
       pull.values(files),
-      pull.asyncMap(metadb.files.get),
-      pull.map(file => file.holders),
-      pull.collect((err, recipients) => {
-        if (err) return callback(err)
-        recipients.push(metadb.keyHex)
-        recipients = uniq(recipients.flat())
-        if ((recipients.length === 1) && (recipients[0] === metadb.keyHex)) return callback(new Error('cannot request to yourself'))
-        if (recipients.length > 7) return callback(new Error('More than 7 recipients')) // TODO publish multiple messages
-        const msg = {
-          type: 'request',
-          version: VERSION,
-          files,
-          timestamp: Date.now(),
-          recipients: recipients.map(recipient => recipient.toString('hex'))
-        }
-        // TODO check we didnt already publish a similar request message (files and recps)
-        metadb.localFeed.append(msg, callback)
+      pull.asyncMap((file, cb) => {
+        // Check if we already have a request for this file
+        metadb.requestsdb.get(file, (err, existingEntry) => {
+          // TODO search for file locally / check offset
+          if (!err) return cb(null, { key: file, value: existingEntry })
+          metadb.requestsdb.put(file, { open: true }, (err) => {
+            if (err) return callback(new Error('Error writing request to local db'))
+            return cb(null, { key: file, value: {} })
+          })
+        })
+      }),
+      pull.asyncMap((fileObj, cb) => {
+        // Find the file in our db
+        metadb.files.get(fileObj.key, (err, metadata) => {
+          if (err) {
+            console.log('Warning: Requested file is not in our database')
+            // Broadcast the request (temporary, TODO)
+            Object.keys(metadb.connectedPeers).forEach((holder) => {
+              queuedRequests[holder] = queuedRequests[holder] || []
+              queuedRequests[holder].push(fileObj)
+            })
+            return cb()
+          }
+          metadata.holders.forEach((holder) => {
+            if (holder !== metadb.keyhex) {
+              if (metadb.connectedPeers[holder]) {
+                queuedRequests[holder] = queuedRequests[holder] || []
+                queuedRequests[holder].push(fileObj)
+                return cb()
+              }
+            }
+          })
+        })
+      }),
+      pull.collect((err) => {
+        // Give the requests in batches
+        Object.keys(queuedRequests).forEach((holder) => {
+          metadb.connectedPeers[holder].sendRequest(queuedRequests[holder])
+        })
+        return callback(err)
       })
     )
   }

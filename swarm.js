@@ -53,8 +53,10 @@ module.exports = function (metadb) {
         } else {
           const deduplicated = details.deduplicate(metadb.keypair.publicKey, remotePk)
           console.log('Deduplicated:', deduplicated)
-          if (!deduplicated) pump(mainStream, metadb.core.replicate(isInitiator, { live: true }), mainStream)
-          metadb.connectedPeers[remotePk.toString('hex')] = fileTransfer(metadb)(remotePk, transferStream)
+          if (!deduplicated) {
+            pump(mainStream, metadb.core.replicate(isInitiator, { live: true }), mainStream)
+            metadb.connectedPeers[remotePk.toString('hex')] = fileTransfer(metadb)(remotePk, transferStream)
+          }
         }
       })
 

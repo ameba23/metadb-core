@@ -8,6 +8,7 @@ module.exports = function (metadb) {
     pull(
       pull.values(hashList),
       pull.asyncMap((hash, cb) => {
+        console.log('searching for hash', hash)
         metadb.sharedb.get(hash, (err, fileObject) => {
           if (err) return cb(err)
           cb(null, fileObject)

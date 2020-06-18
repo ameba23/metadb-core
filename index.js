@@ -11,7 +11,7 @@ const log = console.log // TODO
 
 const createFilesView = require('./views/files')
 const createPeersView = require('./views/peers')
-const createRequestsView = require('./views/requests')
+// const createRequestsView = require('./views/requests')
 
 const IndexFiles = require('./index-files')
 const Swarm = require('./swarm')
@@ -52,9 +52,10 @@ class MetaDb {
     this.connections = {}
     this.query = Query(this)
     this.publish = Publish(this)
-    this.connectedPeers = []
-    this.activeDownloads = []
-    this.activeUploads = []
+    this.connectedPeers = {}
+    this.uploadQueue = []
+    this.activeDownloads = [] // TODO possible redundant
+    this.activeUploads = [] // ditto
 
     this.core = kappa(
       DB(this.storage), {
@@ -72,33 +73,34 @@ class MetaDb {
     this.core.use('peers', createPeersView(
       sublevel(this.db, PEERS, { valueEncoding: 'json' })
     ))
-    this.core.use('requests', createRequestsView(
-      sublevel(this.db, REQUESTS, { valueEncoding: 'json' })
-    ))
+    // this.core.use('requests', createRequestsView(
+    //   sublevel(this.db, REQUESTS, { valueEncoding: 'json' })
+    // ))
+    this.requestsdb = sublevel(this.db, REQUESTS, { valueEncoding: 'json' })
 
     this.sharedb = sublevel(this.db, SHARES, { valueEncoding: 'json' })
     this.shareTotals = sublevel(this.db, 'ST')
     this.swarmdb = sublevel(this.db, 'SW', { valueEncoding: 'json' })
     this.files = this.core.api.files
     this.peers = this.core.api.peers
-    this.requests = this.core.api.requests
+    // this.requests = this.core.api.requests
     this.events = new EventEmitter()
     // this.events.on('ws', () => {
     //   console.log('message locally')
     // })
     this.files.events.on('update', () => {})
     this.peers.events.on('update', () => {})
-    this.requests.events.on('update', (messagesFound) => {
-      // TODO
-      this.query.processRequestsFromOthers((err, networks) => {
-        if (err) console.log(err)
-        console.log('networks from uploads', networks)
-      })
-      this.query.processRequestsFromSelf((err, networks) => {
-        if (err) console.log(err)
-        console.log('networks from downloads', networks)
-      })
-    })
+    // this.requests.events.on('update', (messagesFound) => {
+    //   // TODO
+    //   this.query.processRequestsFromOthers((err, networks) => {
+    //     if (err) console.log(err)
+    //     console.log('networks from uploads', networks)
+    //   })
+    //   this.query.processRequestsFromSelf((err, networks) => {
+    //     if (err) console.log(err)
+    //     console.log('networks from downloads', networks)
+    //   })
+    // })
   }
 
   ready (cb) {
@@ -152,7 +154,7 @@ class MetaDb {
         peerNames: this.peerNames,
         connections: Object.keys(this.connections),
         config: this.config,
-        connectedPeers: this.connectedPeers,
+        connectedPeers: Object.keys(this.connectedPeers),
         downloadPath: this.downloadPath,
         homeDir
       })
@@ -176,7 +178,7 @@ class MetaDb {
     }
   }
 
-  indexFiles (dir, cb) { return IndexFiles(this)(dir, cb) }
+  indexFiles (dir, opts, started, finished) { return IndexFiles(this)(dir, opts, started, finished) }
 
   shares () {
     // TODO: this should map shares to files somehow for displaying in the interface
