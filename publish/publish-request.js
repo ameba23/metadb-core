@@ -1,9 +1,7 @@
 const pull = require('pull-stream')
 const assert = require('assert')
-const { uniq, isHexString } = require('../util')
-const crypto = require('crypto')
+const { isHexString } = require('../util')
 const SHA256_BYTES = 32 // TODO
-// const VERSION = '1.0.0'
 
 // add the requested files to local db
 // if we are connected to the peer, pass the requests to them

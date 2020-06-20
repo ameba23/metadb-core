@@ -28,43 +28,17 @@ const isAbout = validator({
   }
 })
 
-const isRequest = validator({
+const isInvite = validator({
   $schema: 'http://json-schema.org/schema#',
   type: 'object',
   properties: {
-    type: type('request'),
-    version,
-    timestamp,
-    files: {
-      required: true,
-      type: 'array',
-      minItems: 1,
-      // maxItems ?
-      items: {
-        type: 'string'
-        // TODO: regex
-      }
-    },
-    recipients
-  }
-})
-
-const isReply = validator({
-  $schema: 'http://json-schema.org/schema#',
-  type: 'object',
-  properties: {
-    type: type('reply'),
+    type: type('invite'),
     version,
     timestamp,
     link: {
       required: true,
       type: 'string'
-      // TODO: regex
-    },
-    branch: {
-      required: true,
-      type: 'string'
-      // TODO: regex key@seq
+      // TODO regex
     },
     recipients
   }
@@ -122,6 +96,25 @@ const isAddFile = validator({
   }
 })
 
+// Assert that you no longer have the given files
+const isRmFiles = validator({
+  $schema: 'http://json-schema.org/schema#',
+  type: 'object',
+  properties: {
+    type: type('rmFiles'),
+    version,
+    timestamp,
+    files: {
+      type: 'array',
+      required: true,
+      items: {
+        type: 'string'
+        // TODO: regex
+      }
+    }
+  }
+})
+
 const isHeader = validator({
   $schema: 'http://json-schema.org/schema#',
   type: 'object',
@@ -132,4 +125,4 @@ const isHeader = validator({
   }
 })
 
-module.exports = { isAbout, isRequest, isReply, isFileComment, isAddFile, isHeader }
+module.exports = { isAbout, isInvite, isFileComment, isAddFile, isRmFiles, isHeader }

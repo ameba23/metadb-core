@@ -11,7 +11,7 @@ const log = console.log // TODO
 
 const createFilesView = require('./views/files')
 const createPeersView = require('./views/peers')
-// const createRequestsView = require('./views/requests')
+// const createInvitesView = require('./views/invites')
 
 const IndexFiles = require('./index-files')
 const Swarm = require('./swarm')
@@ -27,6 +27,7 @@ const VIEWS = (dir) => path.join(dir, 'views')
 const FILES = 'f'
 const PEERS = 'p'
 const REQUESTS = 'r'
+// const INVITES = 'i'
 const SHARES = 's'
 
 module.exports = (opts) => new MetaDb(opts)
@@ -54,8 +55,6 @@ class MetaDb {
     this.publish = Publish(this)
     this.connectedPeers = {}
     this.uploadQueue = []
-    this.activeDownloads = [] // TODO possible redundant
-    this.activeUploads = [] // ditto
 
     this.core = kappa(
       DB(this.storage), {
@@ -73,8 +72,8 @@ class MetaDb {
     this.core.use('peers', createPeersView(
       sublevel(this.db, PEERS, { valueEncoding: 'json' })
     ))
-    // this.core.use('requests', createRequestsView(
-    //   sublevel(this.db, REQUESTS, { valueEncoding: 'json' })
+    // this.core.use('invites', createInvitesView(
+    //   sublevel(this.db, INVITES, { valueEncoding: 'json' })
     // ))
     this.requestsdb = sublevel(this.db, REQUESTS, { valueEncoding: 'json' })
 
@@ -83,24 +82,10 @@ class MetaDb {
     this.swarmdb = sublevel(this.db, 'SW', { valueEncoding: 'json' })
     this.files = this.core.api.files
     this.peers = this.core.api.peers
-    // this.requests = this.core.api.requests
+    // this.invites = this.core.api.invites
     this.events = new EventEmitter()
-    // this.events.on('ws', () => {
-    //   console.log('message locally')
-    // })
     this.files.events.on('update', () => {})
     this.peers.events.on('update', () => {})
-    // this.requests.events.on('update', (messagesFound) => {
-    //   // TODO
-    //   this.query.processRequestsFromOthers((err, networks) => {
-    //     if (err) console.log(err)
-    //     console.log('networks from uploads', networks)
-    //   })
-    //   this.query.processRequestsFromSelf((err, networks) => {
-    //     if (err) console.log(err)
-    //     console.log('networks from downloads', networks)
-    //   })
-    // })
   }
 
   ready (cb) {
@@ -116,6 +101,7 @@ class MetaDb {
         this.keyHex = feed.key.toString('hex')
         this.kappaPrivate.secretKey = feed.secretKey
         this.events.emit('ws', 'ready')
+
         // Connect to swarms if any were left connected:
         Swarm.loadSwarms(this)((err) => {
           if (err) log('reading swarmdb:', err) // TODO

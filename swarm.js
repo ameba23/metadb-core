@@ -1,17 +1,16 @@
 const pump = require('pump')
 const hyperswarm = require('hyperswarm')
-// const Protocol = require('hypercore-protocol')
-// const auth = require('hypercore-peer-auth')
-// const debug = require('debug')('metadb')
-const assert = require('assert')
 const multiplex = require('multiplex')
-const { keyedHash, GENERIC_HASH_BYTES } = require('./crypto')
-const { isHexString } = require('./util')
+const pull = require('pull-stream')
+const assert = require('assert')
+
 const crypto = require('./crypto')
 const handshake = require('./handshake')
-const pull = require('pull-stream')
-const log = console.log
 const fileTransfer = require('./file-transfer')
+
+// const log = require('debug')('metadb')
+const log = console.log
+
 
 const CONTEXT = 'metadb'
 const DEFAULT_TOPIC = 'mouse-p2p-app' // temp TODO
@@ -42,20 +41,18 @@ module.exports = function (metadb) {
       metadb.events.emit('ws', JSON.stringify({ connections: { addPeer: key.toString('hex') } }))
       const plex = multiplex()
       const mainStream = plex.createSharedStream('metadb')
-      const handshakeStream = plex.createSharedStream('handshake')
-      // TODO we should be able to re-use the handshake steam and only need 2
       const transferStream = plex.createSharedStream('file-transfer')
       pump(socket, plex, socket)
       // handshake gets remote pk and proves knowledge of swarm 'key'
-      handshake(metadb.keypair, !isInitiator, handshakeStream, key, (err, remotePk) => {
+      handshake(metadb.keypair, !isInitiator, transferStream, key, (err, remotePk, encryptionKeySplit) => {
         if (err) {
-          log(err)
+          log(err) // TODO also close the connection?
         } else {
           const deduplicated = details.deduplicate(metadb.keypair.publicKey, remotePk)
-          console.log('Deduplicated:', deduplicated)
+          log('Deduplicated:', deduplicated)
           if (!deduplicated) {
             pump(mainStream, metadb.core.replicate(isInitiator, { live: true }), mainStream)
-            metadb.connectedPeers[remotePk.toString('hex')] = fileTransfer(metadb)(remotePk, transferStream)
+            metadb.connectedPeers[remotePk.toString('hex')] = fileTransfer(metadb)(remotePk, transferStream, encryptionKeySplit)
           }
         }
       })
@@ -137,5 +134,5 @@ function keyToTopic (key) {
   //  a unique 'context' string.
   if (typeof key === 'string') key = Buffer.from(key)
   assert(Buffer.isBuffer(key), 'Badly formatted key')
-  return keyedHash(key, CONTEXT)
+  return crypto.keyedHash(key, CONTEXT)
 }

@@ -26,6 +26,8 @@ const SECONDPASSLENGTH = sodium.crypto_sign_PUBLICKEYBYTES + sodium.crypto_sign_
 // a: box[k|a.b]     ( A | sign(a|b) )
 // b: box[k|a.b|b.A] ( B | sign(a|b|A) )
 
+// stream key is then: box[k|a.b|b.A|B.a]
+
 module.exports = function (ourStaticKeypair, weAreInitiator, stream, swarmKey, callback) {
   // TODO this function will be passed in:
   const onPeer = function (remoteStaticPk, callback) {
@@ -84,14 +86,38 @@ module.exports = function (ourStaticKeypair, weAreInitiator, stream, swarmKey, c
           if (!weAreInitiator) {
             // Respond with 2nd pass
             const plain = concat([ourStaticKeypair.publicKey, sign(concat([ephKeypair.publicKey, remoteEphPk, remoteStaticPK]))])
-            const encryptionKey = crypto.genericHash(concat([key, scalar(ephKeypair.secretKey, remoteEphPk), scalar(ephKeypair.secretKey, crypto.edToCurvePk(remoteStaticPK))]))
+
+            const encryptionKey = crypto.genericHash(concat([
+              key,
+              scalar(ephKeypair.secretKey, remoteEphPk),
+              scalar(ephKeypair.secretKey, crypto.edToCurvePk(remoteStaticPK))
+            ]))
+
             stream.write(box(plain, encryptionKey))
             // console.log('written:', box(plain, encryptionKey).slice(-5).toString('hex'))
           }
           log(weAreInitiator, 'finished!')
           // Callback with success
           stream.removeListener('data', messageHandler)
-          return callback(null, remoteStaticPK)
+
+          const transportEncryptionKey = crypto.genericHash64(concat([
+            key,
+            scalar(ephKeypair.secretKey, remoteEphPk),
+            weAreInitiator
+              ? scalar(crypto.edToCurveSk(ourStaticKeypair.secretKey), remoteEphPk)
+              : scalar(ephKeypair.secretKey, crypto.edToCurvePk(remoteStaticPK))
+          ]))
+
+          const encryptionKeySplit = {
+            rx: weAreInitiator
+              ? transportEncryptionKey.slice(0, 32)
+              : transportEncryptionKey.slice(32),
+            tx: weAreInitiator
+              ? transportEncryptionKey.slice(32)
+              : transportEncryptionKey.slice(0, 32)
+          }
+
+          return callback(null, remoteStaticPK, encryptionKeySplit)
         })
       }
     } catch (err) {

@@ -30,6 +30,13 @@ function genericHash (msg, key) {
   return hash
 }
 
+function genericHash64 (msg, key) {
+  const hash = sodium.sodium_malloc(sodium.crypto_generichash_KEYBYTES_MAX)
+  sodium.crypto_generichash(hash, msg, key)
+  return hash
+}
+
+
 function keyedHash (msg, key) {
   if (typeof key === 'string') {
     key = genericHash(Buffer.from(key))
@@ -133,6 +140,7 @@ module.exports = {
   GENERIC_HASH_BYTES,
   keypair,
   genericHash,
+  genericHash64,
   Sha256Instance,
   randomBytes,
   CryptoEncoder,

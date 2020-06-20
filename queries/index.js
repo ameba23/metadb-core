@@ -1,9 +1,8 @@
 const pull = require('pull-stream')
 const path = require('path')
+const pullLevel = require('pull-level')
 const confirmKey = require('confirm-key')
 const Abouts = require('./query-abouts')
-const ProcessRequestsFromOthers = require('./processRequestsFromOthers')
-const ProcessRequestsFromSelf = require('./processRequestsFromSelf')
 
 module.exports = function Query (metadb) {
   const query = {
@@ -115,21 +114,16 @@ module.exports = function Query (metadb) {
         })
       )
     },
+    // TODO invites query
 
-    requestsFromOthers: function () {
+    requesting: function () {
       return pull(
-        // TODO metadb.requests.pullNotFromFeedId(key),
-        metadb.requests.pull(),
-        pull.filter((request) => {
-          return request.msgSeq.split('@')[0] !== metadb.keyHex
-        })
+        // currently gives objects: { key: hash(hex) value: { open: true } }
+        pullLevel.read(metadb.requestsdb), // {live: true}
+        pull.map(kv => kv.key),
+        pull.asyncMap(metadb.files.get)
       )
-    },
-
-    requestsFromSelf: () => metadb.requests.pullFromFeedId(metadb.keyHex),
-
-    processRequestsFromOthers: ProcessRequestsFromOthers(metadb),
-    processRequestsFromSelf: ProcessRequestsFromSelf(metadb)
+    }
   }
   return query
 }
