@@ -3,7 +3,7 @@ const tar = require('tar-fs')
 const path = require('path')
 const sodium = require('sodium-native')
 const log = console.log
-
+const util = require('util')
 const messages = require('./messages')
 const OwnFilesFromHashes = require('../queries/own-files-from-hashes')
 
@@ -22,10 +22,10 @@ module.exports = function (metadb) {
       this.stream = stream
       this.stream.on('close', () => {
         console.log('stream closed!')
-        self.stream = false
+        // self.stream = false
       })
       this.target = null
-      this.requestsQueue = [] // pending requests *FROM* us
+      this.requestQueue = [] // pending requests *FROM* us
 
       // TODO - nonces
       const nonces = {
@@ -36,6 +36,7 @@ module.exports = function (metadb) {
 
       this.smc = new SimpleMessageChannels({
         onmessage (channel, type, message) {
+          console.log('got message type', type)
           switch (type) {
             case DATA:
               // this.onData(messages.Data.decode(message))
@@ -56,10 +57,11 @@ module.exports = function (metadb) {
           }
         }
       })
-      // this.stream.on('data', this.smc.recv)
+
       this.stream.on('data', (data) => {
         console.log('got data!')
-        this.smc.recv(this.encryption.decrypt(data))
+        const success = this.smc.recv(this.encryption.decrypt(data))
+        if (!success) log('Error on receive')
       })
 
       // Check our requests db for open requests for this peer,
@@ -89,7 +91,7 @@ module.exports = function (metadb) {
       const self = this
       if (!givenRequests.length) return
       // Check we dont allready have one going - if (target) add request to the queue
-      if (this.target) return this.requestsQueue.push(givenRequests)
+      if (this.target) return this.requestQueue.push(givenRequests)
 
       const request = messages.Request.encode({
         files: givenRequests.map((r) => {
@@ -146,6 +148,7 @@ module.exports = function (metadb) {
                 // Remove this request from our local db
                 metadb.requestsdb.del(hashToCheck.toString('hex'), (err) => {
                   if (err) console.log(err)
+                  console.log('Deleted entry from wishlist')
                 })
                 // or rather metadb.requestsdb.put(hash, {closed:true})
               } else {
@@ -159,6 +162,7 @@ module.exports = function (metadb) {
           return fileStream
         }
       })
+
       this.target.on('finish', () => {
         log('[download] tar stream finished')
         if ((verifiedHashes.length + badHashes.length) === hashes.length) {
@@ -183,7 +187,7 @@ module.exports = function (metadb) {
     //   key: hash, value: { start, end }
     cancelRequest (givenRequests) {
       if (!givenRequests.length) return
-      // TODO find it in requestsQueue and remove
+      // TODO find it in requestQueue and remove
 
       const unrequest = messages.Unrequest.encode({
         files: givenRequests.map((r) => {
@@ -204,6 +208,10 @@ module.exports = function (metadb) {
     }
 
     onData (data) {
+      if (data.toString() === 'TERMINATING UPLOAD') {
+        console.log('terminate signal found')
+        if (this.target) return this.target.end()
+      }
       if (this.target) return this.target.write(data)
       // TODO what to do otherwise? tell them to stop?
       log('Warning: data recieved, but no target stream open')
@@ -221,7 +229,7 @@ module.exports = function (metadb) {
         metadb.emitWs({ uploadQueue: metadb.uploadQueue })
         this.sendMessage(QUEUED, messages.Queued.encode({ queuePosition: metadb.uploadQueue.length }))
         return // err?
-      }
+       }
 
       const self = this
       const hashes = requestMessage.files.map(f => f.hash.toString('hex'))
@@ -258,14 +266,19 @@ module.exports = function (metadb) {
         })
         input.on('data', (data) => {
           // console.log('sending data', data)
-          self.sendMessage(0, data)
+          self.sendMessage(DATA, data)
         })
         input.on('error', (err) => {
           throw err // TODO
         })
-        input.on('end', finishUpload)
+        input.on('end', () => {
+          console.log('END CALLED')
+          self.sendMessage(DATA, Buffer.from('TERMINATING UPLOAD'))
+          finishUpload()
+        })
 
         function finishUpload () {
+          console.log('FINISH UPLOAD')
           const next = metadb.uploadQueue.shift()
           metadb.emitWs({ uploadQueue: metadb.uploadQueue })
           if (next && metadb.connectedPeers[next.remotePk]) {
@@ -323,5 +336,13 @@ class XOR {
     const buf = Buffer.allocUnsafe(24)
     sodium.randombytes_buf(buf)
     return buf
+  }
+}
+function logEvents (emitter, name) {
+  let emit = emitter.emit
+  name = name ? `(${name}) ` : ''
+  emitter.emit = (...args) => {
+    console.log(`\x1b[33m${args[0]}\x1b[0m`, util.inspect(args.slice(1), { depth: 1, colors: true }))
+    emit.apply(emitter, args)
   }
 }

@@ -69,6 +69,7 @@ module.exports.unrequest = function (metadb) {
   return function (files, callback) {
     try {
       if (typeof files === 'string') files = [files]
+      console.log(files)
       assert(Array.isArray(files), 'Files must be an array')
       files.forEach((file) => {
         assert(isHexString(file, SHA256_BYTES), 'Files must be hex encoded hashes')
