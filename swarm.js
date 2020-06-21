@@ -57,13 +57,13 @@ module.exports = function (metadb) {
           log('Deduplicated:', deduplicated)
           if (!deduplicated) {
             pump(indexStream, metadb.core.replicate(isInitiator, { live: true }), indexStream)
-            metadb.connectedPeers[remotePk.toString('hex')] = metadb.connectedPeers[remotePk.toString('hex')] || fileTransfer(metadb)(remotePk, transferStream, encryptionKeySplit)
+            metadb.connectedPeers[remotePk.toString('hex')] = fileTransfer(metadb)(remotePk, transferStream, encryptionKeySplit)
             metadb.emitWs({ connectedPeers: Object.keys(metadb.connectedPeers) })
 
             metadb.connectedPeers[remotePublicKey.toString('hex')].stream.on('close', () => {
               console.log('removing peer from list')
-              delete metadb.connectedPeers[remotePublicKey.toString('hex')]
-              metadb.emitWs({ connectedPeers: Object.keys(metadb.connectedPeers) })
+              // delete metadb.connectedPeers[remotePublicKey.toString('hex')]
+              // metadb.emitWs({ connectedPeers: Object.keys(metadb.connectedPeers) })
             })
             metadb.connectedPeers[remotePublicKey.toString('hex')].stream.on('error', () => {
               console.log('transferstream error')

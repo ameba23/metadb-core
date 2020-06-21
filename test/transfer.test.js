@@ -27,7 +27,7 @@ test('request and reply, 2 actors', t => {
                     t.error(err, 'No err on swarm')
                     // wait till we hear about another feed
                     taker.core._logs.on('feed', () => {
-                      taker.publish.request([files[0].sha256, files[2].sha256], (err) => {
+                      taker.request([files[0].sha256, files[2].sha256], (err) => {
                         t.error(err, 'No error on request')
                         setTimeout(t.end, 50000)
                       })
