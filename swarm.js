@@ -36,14 +36,16 @@ module.exports = function (metadb) {
     var swarm = hyperswarm({ validatepeer: (peer) => !log(peer), multiplex: true })
     swarm.join(topic, { lookup: true, announce: true })
     log('Connected to ', key.toString('hex'), '  Listening for peers....')
+
     swarm.on('connection', (socket, details) => {
       const isInitiator = !!details.client
-      // metadb.events.emit('ws', JSON.stringify({ connections: { addPeer: key.toString('hex') } }))
       const plex = multiplex()
       const indexStream = plex.createSharedStream('metadb')
       const transferStream = plex.createSharedStream('file-transfer')
+
       pump(socket, plex, socket)
-      // handshake gets remote pk and proves knowledge of swarm 'key'
+
+      // Handshake gets remote pk and proves knowledge of swarm 'key'
       let remotePublicKey
       handshake(metadb.keypair, !isInitiator, transferStream, key, (err, remotePk, encryptionKeySplit) => {
         if (err) {
@@ -55,7 +57,7 @@ module.exports = function (metadb) {
           log('Deduplicated:', deduplicated)
           if (!deduplicated) {
             pump(indexStream, metadb.core.replicate(isInitiator, { live: true }), indexStream)
-            metadb.connectedPeers[remotePk.toString('hex')] = fileTransfer(metadb)(remotePk, transferStream, encryptionKeySplit)
+            metadb.connectedPeers[remotePk.toString('hex')] = metadb.connectedPeers[remotePk.toString('hex')] || fileTransfer(metadb)(remotePk, transferStream, encryptionKeySplit)
             metadb.emitWs({ connectedPeers: Object.keys(metadb.connectedPeers) })
 
             metadb.connectedPeers[remotePublicKey.toString('hex')].stream.on('close', () => {
