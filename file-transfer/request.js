@@ -3,11 +3,11 @@ const assert = require('assert')
 const { isHexString } = require('../util')
 const SHA256_BYTES = 32 // TODO
 
-// add the requested files to local db
-// if we are connected to the peer, pass the requests to them
+// Add the requested files to local db
+// If we are connected to the peer, pass the requests to them
 
 module.exports = function (metadb) {
-  return function publishRequest (files, callback) {
+  return function request (files, callback) {
     try {
       if (typeof files === 'string') files = [files]
       assert(Array.isArray(files), 'Files must be an array')
@@ -62,5 +62,32 @@ module.exports = function (metadb) {
         return callback(err)
       })
     )
+  }
+}
+
+module.exports.unrequest = function (metadb) {
+  return function (files, callback) {
+    try {
+      if (typeof files === 'string') files = [files]
+      assert(Array.isArray(files), 'Files must be an array')
+      files.forEach((file) => {
+        assert(isHexString(file, SHA256_BYTES), 'Files must be hex encoded hashes')
+      })
+    } catch (err) { return callback(err) }
+
+    pull(
+      pull.values(files),
+      pull.asyncMap((file, cb) => {
+        metadb.requestsdb.del(file, (err) => {
+          if (err) { console.log('error!', err) }
+          cb(err, file)
+        })
+      }),
+      pull.collect((err) => {
+        console.log(err)
+        callback(err)
+      })
+    )
+    // TODO cancel current downloads
   }
 }

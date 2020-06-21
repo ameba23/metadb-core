@@ -17,8 +17,13 @@ const REFUSE = 5
 module.exports = function (metadb) {
   class FileTransfer {
     constructor (remotePk, stream, encryptionKeySplit) {
+      const self = this
       this.remotePk = remotePk
       this.stream = stream
+      this.stream.on('close', () => {
+        console.log('stream closed!')
+        self.stream = false
+      })
       this.target = null
       this.requestsQueue = [] // pending requests *FROM* us
 
@@ -29,7 +34,6 @@ module.exports = function (metadb) {
       }
       this.encryption = new XOR(nonces, encryptionKeySplit)
 
-      const self = this
       this.smc = new SimpleMessageChannels({
         onmessage (channel, type, message) {
           switch (type) {
@@ -214,6 +218,7 @@ module.exports = function (metadb) {
       if (metadb.uploadQueue.length) {
         // TODO should we allow multiple simultanious uploads? how many?
         metadb.uploadQueue.push({ sender: this.remotePk, requestMessage })
+        metadb.emitWs({ uploadQueue: metadb.uploadQueue })
         this.sendMessage(QUEUED, messages.Queued.encode({ queuePosition: metadb.uploadQueue.length }))
         return // err?
       }
@@ -262,6 +267,7 @@ module.exports = function (metadb) {
 
         function finishUpload () {
           const next = metadb.uploadQueue.shift()
+          metadb.emitWs({ uploadQueue: metadb.uploadQueue })
           if (next && metadb.connectedPeers[next.remotePk]) {
             metadb.connectedPeers[next.remotePk].onRequest(next.requestMessage)
           }
@@ -278,6 +284,7 @@ module.exports = function (metadb) {
           return (!unrequestMessage.files.map(f => f.hash.toString('hex')).includes(file.hash.toString('hex')))
         })
       })
+      metadb.emitWs({ uploadQueue: metadb.uploadQueue })
       // TODO how to check if it is the target right now?
       // if it is can we just destroy target?
     }

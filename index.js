@@ -19,6 +19,7 @@ const config = require('./config')
 const crypto = require('./crypto')
 const Query = require('./queries')
 const Publish = require('./publish')
+const Request = require('./file-transfer/request')
 
 const LOCAL_FEED = 'local'
 const DB = (dir) => path.join(dir, 'feeds')
@@ -172,6 +173,9 @@ class MetaDb {
     //   }
     // )
   }
+
+  request (...args) { return Request(this)(...args) }
+  unrequest (...args) { return Request.unrequest(this)(...args) }
 
   writeConfig (cb) { return config.save(this)(cb) }
   loadConfig (cb) { return config.load(this)(cb) }
