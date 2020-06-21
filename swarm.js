@@ -6,11 +6,10 @@ const assert = require('assert')
 
 const crypto = require('./crypto')
 const handshake = require('./handshake')
-const fileTransfer = require('./file-transfer')
+const FileTransfer = require('./file-transfer')
 
 // const log = require('debug')('metadb')
 const log = console.log
-
 
 const CONTEXT = 'metadb'
 const DEFAULT_TOPIC = 'mouse-p2p-app' // temp TODO
@@ -40,6 +39,9 @@ module.exports = function (metadb) {
     swarm.on('connection', (socket, details) => {
       const isInitiator = !!details.client
       const plex = multiplex()
+      plex.on('error', (err) => {
+        log('Error from multiplex', err)
+      })
       const indexStream = plex.createSharedStream('metadb')
       const transferStream = plex.createSharedStream('file-transfer')
 
@@ -54,10 +56,17 @@ module.exports = function (metadb) {
           remotePublicKey = remotePk
           const deduplicated = details.deduplicate(metadb.keypair.publicKey, remotePk)
           log('To deduplicate:', metadb.keypair.publicKey, remotePk)
-          log('Deduplicated:', deduplicated)
+          log('Deduplicated:', deduplicated, 'isinitiator:', !isInitiator)
+          // if ((!deduplicated) && (!isInitiator)) {
           if (!deduplicated) {
+            // if dedup is false and we are initiator, they will be the one to drop a connection
+            // if (weAreInitiator) we know this connectionion will live
             pump(indexStream, metadb.core.replicate(isInitiator, { live: true }), indexStream)
-            metadb.connectedPeers[remotePk.toString('hex')] = fileTransfer(metadb)(remotePk, transferStream, encryptionKeySplit)
+
+            metadb.connectedPeers[remotePk.toString('hex')] = isInitiator
+              ? metadb.connectedPeers[remotePk.toString('hex')] || FileTransfer(metadb)(remotePk, transferStream, encryptionKeySplit)
+              : FileTransfer(metadb)(remotePk, transferStream, encryptionKeySplit)
+
             metadb.emitWs({ connectedPeers: Object.keys(metadb.connectedPeers) })
 
             metadb.connectedPeers[remotePublicKey.toString('hex')].stream.on('close', () => {
