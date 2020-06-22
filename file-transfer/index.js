@@ -7,12 +7,13 @@ const util = require('util')
 const messages = require('./messages')
 const OwnFilesFromHashes = require('../queries/own-files-from-hashes')
 
-// message types:
+// Message types:
 const DATA = 0
 const REQUEST = 1
 const UNREQUEST = 2
 const QUEUED = 4
 const REFUSE = 5
+const FINISH = 6
 
 module.exports = function (metadb) {
   class FileTransfer {
@@ -24,7 +25,6 @@ module.exports = function (metadb) {
         console.log('stream closed!')
         // self.stream = false
       })
-      this.target = null
       this.requestQueue = [] // pending requests *FROM* us
 
       // TODO - nonces
@@ -50,7 +50,10 @@ module.exports = function (metadb) {
               self.onUnrequest(messages.Unrequest.decode(message))
               break
             case REFUSE:
-              // TODO
+              // TODO send something on ws?
+              break
+            case FINISH:
+              if (self.target && !self.target.destroyed) self.target.end()
               break
             default:
               // unknown type
@@ -91,7 +94,7 @@ module.exports = function (metadb) {
       const self = this
       if (!givenRequests.length) return
       // Check we dont allready have one going - if (target) add request to the queue
-      if (this.target) return this.requestQueue.push(givenRequests)
+      if (this.target && !this.target.destroyed) return this.requestQueue.push(givenRequests)
 
       const request = messages.Request.encode({
         files: givenRequests.map((r) => {
@@ -174,8 +177,7 @@ module.exports = function (metadb) {
         if (verifiedHashes.length === hashes.length) {
           log('[download] all files hashes match!')
         }
-        // destroy stream? target.destroy?
-        // target = false?
+        self.target.destroy()
 
         // Shift the request off the requestQueue
         const next = self.requestQueue.shift()
@@ -208,11 +210,7 @@ module.exports = function (metadb) {
     }
 
     onData (data) {
-      if (data.toString() === 'TERMINATING UPLOAD') {
-        console.log('terminate signal found')
-        if (this.target) return this.target.end()
-      }
-      if (this.target) return this.target.write(data)
+      if (this.target && !this.target.destroyed) return this.target.write(data)
       // TODO what to do otherwise? tell them to stop?
       log('Warning: data recieved, but no target stream open')
     }
@@ -273,7 +271,7 @@ module.exports = function (metadb) {
         })
         input.on('end', () => {
           console.log('END CALLED')
-          self.sendMessage(DATA, Buffer.from('TERMINATING UPLOAD'))
+          self.sendMessage(FINISH, Buffer.from(''))
           finishUpload()
         })
 
