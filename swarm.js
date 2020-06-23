@@ -32,7 +32,7 @@ module.exports = function (metadb) {
 
   function _swarm (key) {
     const topic = keyToTopic(key)
-    var swarm = hyperswarm({ validatepeer: (peer) => !log(peer), multiplex: true })
+    var swarm = hyperswarm({ validatepeer: (peer) => !log(peer) })
     swarm.join(topic, { lookup: true, announce: true })
     log('Connected to ', key.toString('hex'), '  Listening for peers....')
 
@@ -64,16 +64,14 @@ module.exports = function (metadb) {
             isInitiator
           }
          remotePublicKey = remotePk
-          const deduplicated = details.deduplicate(metadb.keypair.publicKey, remotePk)
+          // const deduplicated = details.deduplicate(metadb.keypair.publicKey, remotePk)
           log('To deduplicate:', metadb.keypair.publicKey.toString('hex'), remotePk.toString('hex'))
-          log('Deduplicated:', deduplicated, 'isinitiator:', !isInitiator)
+          // log('Deduplicated:', deduplicated, 'isinitiator:', !isInitiator)
           // if ((!deduplicated) && (!isInitiator)) {
-          if (!deduplicated) {
+          // if (!deduplicated) {
             // if dedup is false and we are initiator, they will be the one to drop a connection
             // if (weAreInitiator) we know this connection will live
             pump(indexStream, metadb.core.replicate(isInitiator, { live: true }), indexStream)
-
-
 
             metadb.connectedPeers[remotePk.toString('hex')] = isInitiator
                ? metadb.connectedPeers[remotePk.toString('hex')] || FileTransfer(metadb)(remotePk, transferStream, encryptionKeySplit)
@@ -82,14 +80,14 @@ module.exports = function (metadb) {
             metadb.emitWs({ connectedPeers: Object.keys(metadb.connectedPeers) })
 
             metadb.connectedPeers[remotePublicKey.toString('hex')].stream.on('close', () => {
-               console.log('removing peer from list')
+               console.log('removing peer from list', swarm.connections.size)
               // delete metadb.connectedPeers[remotePublicKey.toString('hex')]
              //  metadb.emitWs({ connectedPeers: Object.keys(metadb.connectedPeers) })
             })
             metadb.connectedPeers[remotePublicKey.toString('hex')].stream.on('error', () => {
                console.log('transferstream error')
             })
-          }
+          // }
         }
       })
 
