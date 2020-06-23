@@ -43,12 +43,15 @@ module.exports = function (metadb) {
         log('Error from multiplex', err)
       })
       const indexStream = plex.createSharedStream('metadb')
+      indexStream.on('error', console.log)
+
       const transferStream = plex.createSharedStream('file-transfer')
+      transferStream.on('error', console.log)
 
       pump(socket, plex, socket)
 
       // Handshake gets remote pk and proves knowledge of swarm 'key'
-      // let remotePublicKey
+      let remotePublicKey
       handshake(metadb.keypair, !isInitiator, transferStream, key, (err, remotePk, encryptionKeySplit) => {
         if (err) {
           log(err) // TODO also close the connection?
@@ -60,7 +63,7 @@ module.exports = function (metadb) {
             transferStream,
             isInitiator
           }
-         // remotePublicKey = remotePk
+         remotePublicKey = remotePk
           const deduplicated = details.deduplicate(metadb.keypair.publicKey, remotePk)
           log('To deduplicate:', metadb.keypair.publicKey.toString('hex'), remotePk.toString('hex'))
           log('Deduplicated:', deduplicated, 'isinitiator:', !isInitiator)
@@ -68,22 +71,24 @@ module.exports = function (metadb) {
           if (!deduplicated) {
             // if dedup is false and we are initiator, they will be the one to drop a connection
             // if (weAreInitiator) we know this connection will live
-            // pump(indexStream, metadb.core.replicate(isInitiator, { live: true }), indexStream)
+            pump(indexStream, metadb.core.replicate(isInitiator, { live: true }), indexStream)
 
-            // metadb.connectedPeers[remotePk.toString('hex')] = isInitiator
-            //   ? metadb.connectedPeers[remotePk.toString('hex')] || FileTransfer(metadb)(remotePk, transferStream, encryptionKeySplit)
-            //   : FileTransfer(metadb)(remotePk, transferStream, encryptionKeySplit)
+
+
+            metadb.connectedPeers[remotePk.toString('hex')] = isInitiator
+               ? metadb.connectedPeers[remotePk.toString('hex')] || FileTransfer(metadb)(remotePk, transferStream, encryptionKeySplit)
+               : FileTransfer(metadb)(remotePk, transferStream, encryptionKeySplit)
 
             metadb.emitWs({ connectedPeers: Object.keys(metadb.connectedPeers) })
 
-            // metadb.connectedPeers[remotePublicKey.toString('hex')].stream.on('close', () => {
-              // console.log('removing peer from list')
+            metadb.connectedPeers[remotePublicKey.toString('hex')].stream.on('close', () => {
+               console.log('removing peer from list')
               // delete metadb.connectedPeers[remotePublicKey.toString('hex')]
-              // metadb.emitWs({ connectedPeers: Object.keys(metadb.connectedPeers) })
-            // })
-            // metadb.connectedPeers[remotePublicKey.toString('hex')].stream.on('error', () => {
-            //   console.log('transferstream error')
-            // })
+             //  metadb.emitWs({ connectedPeers: Object.keys(metadb.connectedPeers) })
+            })
+            metadb.connectedPeers[remotePublicKey.toString('hex')].stream.on('error', () => {
+               console.log('transferstream error')
+            })
           }
         }
       })
@@ -93,14 +98,14 @@ module.exports = function (metadb) {
       })
     })
 
-    swarm.on('updated', ({ key }) => {
-      console.log('swarm updated', swarm.connections.size)
-      swarm.connections.forEach((connection) => {
-        const { remotePublicKey, encryptionKeySplit, indexStream, transferStream, isInitiator } = connection.cryptoParams
-        pump(indexStream, metadb.core.replicate(isInitiator, { live: true }), indexStream)
-        metadb.connectedPeers[remotePublicKey] = FileTransfer(metadb)(Buffer.from(remotePublicKey, 'hex'), transferStream, encryptionKeySplit)
-      })
-    })
+    // swarm.on('updated', ({ key }) => {
+    //   console.log('swarm updated', swarm.connections.size)
+    //   swarm.connections.forEach((connection) => {
+    //     const { remotePublicKey, encryptionKeySplit, indexStream, transferStream, isInitiator } = connection.cryptoParams
+    //     pump(indexStream, metadb.core.replicate(isInitiator, { live: true }), indexStream)
+    //     metadb.connectedPeers[remotePublicKey] = FileTransfer(metadb)(Buffer.from(remotePublicKey, 'hex'), transferStream, encryptionKeySplit)
+    //   })
+    // })
     return swarm
   }
 
