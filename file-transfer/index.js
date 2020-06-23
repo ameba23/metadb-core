@@ -11,19 +11,20 @@ const OwnFilesFromHashes = require('../queries/own-files-from-hashes')
 const DATA = 0
 const REQUEST = 1
 const UNREQUEST = 2
-const QUEUED = 4
-const REFUSE = 5
-const FINISH = 6
+const QUEUED = 3
+const REFUSE = 4
+const FINISH = 5
 
 module.exports = function (metadb) {
   class FileTransfer {
     constructor (remotePk, stream, encryptionKeySplit) {
       const self = this
       this.remotePk = remotePk
-      this.stream = stream
-      this.stream.on('close', () => {
-        console.log('stream closed!')
-        // self.stream = false
+      this.streams = [stream]
+      this.ready = false
+      stream.on('close', () => {
+        console.log('stream closed!', stream.destroyed)
+        self.onReady()
       })
       this.requestQueue = [] // pending requests *FROM* us
 
@@ -61,11 +62,17 @@ module.exports = function (metadb) {
         }
       })
 
-      this.stream.on('data', (data) => {
-        console.log('got data!')
-        const success = this.smc.recv(this.encryption.decrypt(data))
+      stream.on('data', (data) => {
+        console.log('got data! (1)')
+        const success = self.smc.recv(self.encryption.decrypt(data))
         if (!success) log('Error on receive')
       })
+    }
+ 
+    onReady () {
+      this.ready = true
+
+      const self = this
 
       // Check our requests db for open requests for this peer,
       // and send them as a batch
@@ -73,7 +80,7 @@ module.exports = function (metadb) {
       const toRequest = []
       readStream.on('data', (entry) => {
         metadb.files.get(entry.key, (err, metadata) => {
-          if (!err && metadata.holders.includes(remotePk.toString('hex'))) {
+          if (!err && metadata.holders.includes(self.remotePk.toString('hex'))) {
             // if (entry.value.open === true) TODO
             toRequest.push(entry)
           }
@@ -86,6 +93,21 @@ module.exports = function (metadb) {
       readStream.on('end', () => {
         if (toRequest.length) this.sendRequest(toRequest)
       })
+    }
+
+    addStream (stream) {
+      console.log('addstream called', stream.destroyed)
+      const self = this
+      stream.on('data', (data) => {
+        console.log('got data! (2)')
+        const success = self.smc.recv(self.encryption.decrypt(data))
+        if (!success) log('Error on receive')
+      })
+      stream.on('close', () => {
+        console.log('stream closed!', stream.destroyed)
+        self.onReady()
+      })
+      this.streams.push(stream)
     }
 
     // Takes requests objects of the form:
@@ -205,8 +227,9 @@ module.exports = function (metadb) {
     }
 
     sendMessage (type, message) {
+      console.log('writing...')
       // Always use channel 0
-      this.stream.write(this.encryption.encrypt(this.smc.send(0, type, message)))
+      this.streams.find(s => !s.destroyed).write(this.encryption.encrypt(this.smc.send(0, type, message)))
     }
 
     onData (data) {

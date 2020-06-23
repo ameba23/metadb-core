@@ -73,18 +73,19 @@ module.exports = function (metadb) {
             // if (weAreInitiator) we know this connection will live
             pump(indexStream, metadb.core.replicate(isInitiator, { live: true }), indexStream)
 
-            metadb.connectedPeers[remotePk.toString('hex')] = isInitiator
-               ? metadb.connectedPeers[remotePk.toString('hex')] || FileTransfer(metadb)(remotePk, transferStream, encryptionKeySplit)
-               : FileTransfer(metadb)(remotePk, transferStream, encryptionKeySplit)
-
+            if (metadb.connectedPeers[remotePk.toString('hex')]) {
+              metadb.connectedPeers[remotePk.toString('hex')].addStream(transferStream)
+            } else {
+              metadb.connectedPeers[remotePk.toString('hex')] = FileTransfer(metadb)(remotePk, transferStream, encryptionKeySplit)
+            }
             metadb.emitWs({ connectedPeers: Object.keys(metadb.connectedPeers) })
 
-            metadb.connectedPeers[remotePublicKey.toString('hex')].stream.on('close', () => {
+            transferStream.on('close', () => {
                console.log('removing peer from list', swarm.connections.size)
               // delete metadb.connectedPeers[remotePublicKey.toString('hex')]
              //  metadb.emitWs({ connectedPeers: Object.keys(metadb.connectedPeers) })
             })
-            metadb.connectedPeers[remotePublicKey.toString('hex')].stream.on('error', () => {
+            transferStream.on('error', () => {
                console.log('transferstream error')
             })
           // }
