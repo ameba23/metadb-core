@@ -51,37 +51,38 @@ module.exports = function (metadb) {
       pump(socket, plex, socket)
 
       // Handshake gets remote pk and proves knowledge of swarm 'key'
-      handshake(metadb.keypair, !isInitiator, transferStream, key, (err, remotePk, encryptionKeySplit) => {
+      handshake(metadb.keypair, !isInitiator, transferStream, key, (err, cryptoParams) => {
         if (err) {
           log(err) // TODO also close the connection?
         } else {
-          transferStream.cryptoParams = {
-            remotePublicKey: remotePk.toString('hex'),
-            encryptionKeySplit
-          }
-          const deduplicated = details.deduplicate(metadb.keypair.publicKey, remotePk)
-          log('To deduplicate:', metadb.keypair.publicKey.toString('hex'), remotePk.toString('hex'))
+          transferStream.cryptoParams = cryptoParams
+          const remotePk = cryptoParams.remotePk
+
+          const deduplicated = details.deduplicate(metadb.keypair.publicKey, Buffer.from(remotePk, 'hex'))
+          log('To deduplicate:', metadb.keypair.publicKey.toString('hex'), remotePk)
           log('Deduplicated:', deduplicated, 'isinitiator:', !isInitiator)
-          // if ((!deduplicated) && (!isInitiator)) {
+
           if (!deduplicated) {
             // if dedup is false and we are initiator, they will be the one to drop a connection
             // if (weAreInitiator) we know this connection will live
+
             pump(indexStream, metadb.core.replicate(isInitiator, { live: true }), indexStream)
 
-            if (metadb.connectedPeers[remotePk.toString('hex')]) {
-              metadb.connectedPeers[remotePk.toString('hex')].addStream(transferStream)
+            if (metadb.connectedPeers[remotePk]) {
+              metadb.connectedPeers[remotePk].addStream(transferStream)
             } else {
-              metadb.connectedPeers[remotePk.toString('hex')] = FileTransfer(metadb)(remotePk, transferStream)
+              metadb.connectedPeers[remotePk] = FileTransfer(metadb)(transferStream)
             }
+
             metadb.emitWs({ connectedPeers: Object.keys(metadb.connectedPeers) })
 
             transferStream.on('close', () => {
-               console.log('removing peer from list', swarm.connections.size)
+              console.log('removing peer from list', swarm.connections.size)
               // delete metadb.connectedPeers[remotePublicKey.toString('hex')]
-             //  metadb.emitWs({ connectedPeers: Object.keys(metadb.connectedPeers) })
+              //  metadb.emitWs({ connectedPeers: Object.keys(metadb.connectedPeers) })
             })
             transferStream.on('error', () => {
-               console.log('transferstream error')
+              console.log('transferstream error')
             })
           }
         }

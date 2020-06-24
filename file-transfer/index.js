@@ -2,6 +2,8 @@ const SimpleMessageChannels = require('simple-message-channels')
 const tar = require('tar-fs')
 const path = require('path')
 const sodium = require('sodium-native')
+const pullLevel = require('pull-level')
+const pull = require('pull-stream')
 const log = console.log
 const util = require('util')
 const messages = require('./messages')
@@ -17,28 +19,14 @@ const FINISH = 5
 
 module.exports = function (metadb) {
   class FileTransfer {
-    constructor (remotePk, stream) {
+    constructor (stream) {
       const self = this
-      this.remotePk = remotePk
-      this.streams = [stream]
+      this.remotePk = stream.cryptoParams.remotePk
+      this.streams = []
+      this.addStream(stream)
       this.requestQueue = [] // pending requests *FROM* us
-      // this.ready = false
-      stream.on('close', () => {
-        console.log('stream closed!', stream.destroyed)
-        // self.onReady()
-      })
 
-      // TODO - nonces
-      const nonces = {
-        rnonce: Buffer.from('this is really 24 bytes!'),
-        tnonce: Buffer.from('this is really 24 bytes!')
-      }
-      stream.cryptoParams.encryption = new XOR(nonces, stream.cryptoParams.encryptionKeySplit)
-      stream.on('data', (data) => {
-        console.log('got data! (1)')
-        const success = self.smc.recv(stream.cryptoParams.encryption.decrypt(data))
-        if (!success) log('Error on receive')
-      })
+      // this.ready = false
 
       this.smc = new SimpleMessageChannels({
         onmessage (channel, type, message) {
@@ -68,7 +56,7 @@ module.exports = function (metadb) {
       })
       this.onReady()
     }
- 
+
     onReady () {
       this.ready = true
 
@@ -76,23 +64,22 @@ module.exports = function (metadb) {
 
       // Check our requests db for open requests for this peer,
       // and send them as a batch
-      const readStream = metadb.requestsdb.createReadStream()
-      const toRequest = []
-      readStream.on('data', (entry) => {
-        metadb.files.get(entry.key, (err, metadata) => {
-          if (!err && metadata.holders.includes(self.remotePk.toString('hex'))) {
-            // if (entry.value.open === true) TODO
-            toRequest.push(entry)
-          }
+      pull(
+        pullLevel.read(metadb.requestsdb, { live: false }),
+        pull.asyncMap((entry, cb) => {
+          metadb.files.get(entry.key, (err, metadata) => {
+            if (!err && metadata.holders.includes(self.remotePk.toString('hex'))) {
+              // if (entry.value.open === true) TODO
+              cb(null, entry)
+            }
+          })
+        }),
+        pull.collect((err, entries) => {
+          if (err) throw err // TODO
+          console.log('requesting ', entries.length)
+          if (entries.length) self.sendRequest(entries)
         })
-      })
-      readStream.on('error', (err) => {
-        // TODO log
-        throw err
-      })
-      readStream.on('end', () => {
-        if (toRequest.length) this.sendRequest(toRequest)
-      })
+      )
     }
 
     addStream (stream) {
@@ -102,13 +89,11 @@ module.exports = function (metadb) {
         console.log('stream closed!', stream.destroyed)
         self.onReady()
       })
-      const nonces = {
-        rnonce: Buffer.from('this is really 24 bytes!'),
-        tnonce: Buffer.from('this is really 24 bytes!')
-      }
-      stream.cryptoParams.encryption = new XOR(nonces, stream.cryptoParams.encryptionKeySplit)
+
+      const { nonces, encryptionKeySplit } = stream.cryptoParams
+      stream.cryptoParams.encryption = new XOR(nonces, encryptionKeySplit)
       stream.on('data', (data) => {
-        console.log('got data! (2)')
+        console.log('Got data!')
         const success = self.smc.recv(stream.cryptoParams.encryption.decrypt(data))
         if (!success) log('Error on receive')
       })
@@ -118,9 +103,11 @@ module.exports = function (metadb) {
     // Takes requests objects of the form:
     //   key: hash, value: { start, end }
     sendRequest (givenRequests) {
+      console.log('sending REQUEST', givenRequests)
       const self = this
       if (!givenRequests.length) return
       // Check we dont allready have one going - if (target) add request to the queue
+      if (this.target)console.log('target destroyed? ', this.target.destroyed)
       if (this.target && !this.target.destroyed) return this.requestQueue.push(givenRequests)
 
       const request = messages.Request.encode({
@@ -205,7 +192,7 @@ module.exports = function (metadb) {
           log('[download] all files hashes match!')
         }
         self.target.destroy()
-
+        self.target = false
         // Shift the request off the requestQueue
         const next = self.requestQueue.shift()
         if (next) self.sendRequest(next)
@@ -256,7 +243,7 @@ module.exports = function (metadb) {
         metadb.emitWs({ uploadQueue: metadb.uploadQueue })
         this.sendMessage(QUEUED, messages.Queued.encode({ queuePosition: metadb.uploadQueue.length }))
         return // err?
-       }
+      }
 
       const self = this
       const hashes = requestMessage.files.map(f => f.hash.toString('hex'))
@@ -338,8 +325,8 @@ module.exports = function (metadb) {
 // from simple-hypercore-protocol:
 class XOR {
   constructor (nonces, split) {
-    this.rnonce = nonces.rnonce
-    this.tnonce = nonces.tnonce
+    this.rnonce = nonces.rx
+    this.tnonce = nonces.tx
     this.rx = sodium.crypto_stream_xor_instance(this.rnonce, split.rx.slice(0, 32))
     this.tx = sodium.crypto_stream_xor_instance(this.tnonce, split.tx.slice(0, 32))
   }

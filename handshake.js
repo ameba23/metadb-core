@@ -38,6 +38,7 @@ module.exports = function (ourStaticKeypair, weAreInitiator, stream, swarmKey, c
   const sign = (message) => signDetached(message, ourStaticKeypair.secretKey)
   let remoteStaticPK
   let remoteEphPk
+  const nonces = {}
 
   // Add handshake version number to key
   const key = crypto.genericHash(Buffer.from('metadb handshake version 0.0.1'), swarmKey)
@@ -53,7 +54,10 @@ module.exports = function (ourStaticKeypair, weAreInitiator, stream, swarmKey, c
           // Respond with 2nd pass
           const plain = concat([ourStaticKeypair.publicKey, sign(concat([ephKeypair.publicKey, remoteEphPk]))])
           const encryptionKey = crypto.genericHash(concat([key, scalar(ephKeypair.secretKey, remoteEphPk)]))
-          stream.write(box(plain, encryptionKey))
+
+          const ciphertext = box(plain, encryptionKey)
+          nonces.tx = ciphertext.slice(ciphertext.length - sodium.crypto_secretbox_NONCEBYTES)
+          stream.write(ciphertext)
         } else {
           // Respond with our eph key
           stream.write(box(ephKeypair.publicKey, key))
@@ -78,6 +82,8 @@ module.exports = function (ourStaticKeypair, weAreInitiator, stream, swarmKey, c
         ])
         assert(validate(plain.slice(sodium.crypto_sign_PUBLICKEYBYTES), message, remoteStaticPK), 'Could not validate signature')
 
+        nonces.rx = data.slice(data.length - sodium.crypto_secretbox_NONCEBYTES)
+
         // Call the hook to decide if we want to connect to this peer
         onPeer(remoteStaticPK, (err, accepted) => {
           if (err) throw err
@@ -93,8 +99,9 @@ module.exports = function (ourStaticKeypair, weAreInitiator, stream, swarmKey, c
               scalar(ephKeypair.secretKey, crypto.edToCurvePk(remoteStaticPK))
             ]))
 
-            stream.write(box(plain, encryptionKey))
-            // console.log('written:', box(plain, encryptionKey).slice(-5).toString('hex'))
+            const ciphertext = box(plain, encryptionKey)
+            nonces.tx = ciphertext.slice(ciphertext.length - sodium.crypto_secretbox_NONCEBYTES)
+            stream.write(ciphertext)
           }
           log(weAreInitiator, 'finished!')
           // Callback with success
@@ -117,7 +124,8 @@ module.exports = function (ourStaticKeypair, weAreInitiator, stream, swarmKey, c
               : transportEncryptionKey.slice(0, 32)
           }
 
-          return callback(null, remoteStaticPK, encryptionKeySplit)
+          assert(nonces.tx, 'handshake failed' + weAreInitiator)
+          return callback(null, { remotePk: remoteStaticPK.toString('hex'), encryptionKeySplit, nonces })
         })
       }
     } catch (err) {
