@@ -51,24 +51,19 @@ module.exports = function (metadb) {
       pump(socket, plex, socket)
 
       // Handshake gets remote pk and proves knowledge of swarm 'key'
-      let remotePublicKey
       handshake(metadb.keypair, !isInitiator, transferStream, key, (err, remotePk, encryptionKeySplit) => {
         if (err) {
           log(err) // TODO also close the connection?
         } else {
-          socket.cryptoParams = {
+          transferStream.cryptoParams = {
             remotePublicKey: remotePk.toString('hex'),
-            encryptionKeySplit,
-            indexStream,
-            transferStream,
-            isInitiator
+            encryptionKeySplit
           }
-         remotePublicKey = remotePk
-          // const deduplicated = details.deduplicate(metadb.keypair.publicKey, remotePk)
+          const deduplicated = details.deduplicate(metadb.keypair.publicKey, remotePk)
           log('To deduplicate:', metadb.keypair.publicKey.toString('hex'), remotePk.toString('hex'))
-          // log('Deduplicated:', deduplicated, 'isinitiator:', !isInitiator)
+          log('Deduplicated:', deduplicated, 'isinitiator:', !isInitiator)
           // if ((!deduplicated) && (!isInitiator)) {
-          // if (!deduplicated) {
+          if (!deduplicated) {
             // if dedup is false and we are initiator, they will be the one to drop a connection
             // if (weAreInitiator) we know this connection will live
             pump(indexStream, metadb.core.replicate(isInitiator, { live: true }), indexStream)
@@ -76,7 +71,7 @@ module.exports = function (metadb) {
             if (metadb.connectedPeers[remotePk.toString('hex')]) {
               metadb.connectedPeers[remotePk.toString('hex')].addStream(transferStream)
             } else {
-              metadb.connectedPeers[remotePk.toString('hex')] = FileTransfer(metadb)(remotePk, transferStream, encryptionKeySplit)
+              metadb.connectedPeers[remotePk.toString('hex')] = FileTransfer(metadb)(remotePk, transferStream)
             }
             metadb.emitWs({ connectedPeers: Object.keys(metadb.connectedPeers) })
 
@@ -88,7 +83,7 @@ module.exports = function (metadb) {
             transferStream.on('error', () => {
                console.log('transferstream error')
             })
-          // }
+          }
         }
       })
 

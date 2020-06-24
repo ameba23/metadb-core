@@ -17,23 +17,28 @@ const FINISH = 5
 
 module.exports = function (metadb) {
   class FileTransfer {
-    constructor (remotePk, stream, encryptionKeySplit) {
+    constructor (remotePk, stream) {
       const self = this
       this.remotePk = remotePk
       this.streams = [stream]
-      this.ready = false
+      this.requestQueue = [] // pending requests *FROM* us
+      // this.ready = false
       stream.on('close', () => {
         console.log('stream closed!', stream.destroyed)
-        self.onReady()
+        // self.onReady()
       })
-      this.requestQueue = [] // pending requests *FROM* us
 
       // TODO - nonces
       const nonces = {
         rnonce: Buffer.from('this is really 24 bytes!'),
         tnonce: Buffer.from('this is really 24 bytes!')
       }
-      this.encryption = new XOR(nonces, encryptionKeySplit)
+      stream.cryptoParams.encryption = new XOR(nonces, stream.cryptoParams.encryptionKeySplit)
+      stream.on('data', (data) => {
+        console.log('got data! (1)')
+        const success = self.smc.recv(stream.cryptoParams.encryption.decrypt(data))
+        if (!success) log('Error on receive')
+      })
 
       this.smc = new SimpleMessageChannels({
         onmessage (channel, type, message) {
@@ -61,12 +66,7 @@ module.exports = function (metadb) {
           }
         }
       })
-
-      stream.on('data', (data) => {
-        console.log('got data! (1)')
-        const success = self.smc.recv(self.encryption.decrypt(data))
-        if (!success) log('Error on receive')
-      })
+      this.onReady()
     }
  
     onReady () {
@@ -98,14 +98,19 @@ module.exports = function (metadb) {
     addStream (stream) {
       console.log('addstream called', stream.destroyed)
       const self = this
-      stream.on('data', (data) => {
-        console.log('got data! (2)')
-        const success = self.smc.recv(self.encryption.decrypt(data))
-        if (!success) log('Error on receive')
-      })
       stream.on('close', () => {
         console.log('stream closed!', stream.destroyed)
         self.onReady()
+      })
+      const nonces = {
+        rnonce: Buffer.from('this is really 24 bytes!'),
+        tnonce: Buffer.from('this is really 24 bytes!')
+      }
+      stream.cryptoParams.encryption = new XOR(nonces, stream.cryptoParams.encryptionKeySplit)
+      stream.on('data', (data) => {
+        console.log('got data! (2)')
+        const success = self.smc.recv(stream.cryptoParams.encryption.decrypt(data))
+        if (!success) log('Error on receive')
       })
       this.streams.push(stream)
     }
@@ -229,7 +234,8 @@ module.exports = function (metadb) {
     sendMessage (type, message) {
       console.log('writing...')
       // Always use channel 0
-      this.streams.find(s => !s.destroyed).write(this.encryption.encrypt(this.smc.send(0, type, message)))
+      const streamToUse = this.streams.find(s => !s.destroyed)
+      streamToUse.write(streamToUse.cryptoParams.encryption.encrypt(this.smc.send(0, type, message)))
     }
 
     onData (data) {
