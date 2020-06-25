@@ -1,151 +1,176 @@
 const pump = require('pump')
 const hyperswarm = require('hyperswarm')
-// const Protocol = require('hypercore-protocol')
-// const auth = require('hypercore-peer-auth')
-// const debug = require('debug')('metadb')
+const multiplex = require('multiplex')
+const pull = require('pull-stream')
+const pullLevel = require('pull-level')
 const assert = require('assert')
-const { keyedHash, GENERIC_HASH_BYTES } = require('./crypto')
-const { isHexString } = require('./util')
+
 const crypto = require('./crypto')
 const handshake = require('./handshake')
-const pull = require('pull-stream')
+const FileTransfer = require('./file-transfer')
+
+// const log = require('debug')('metadb')
 const log = console.log
 
-const CONTEXT = 'metadb'
-const DEFAULT_TOPIC = 'mouse-p2p-app' // temp TODO
+const CONTEXT = 'metadb' // Protocol name is hashed into the topic
 
 module.exports = function (metadb) {
-  const connect = function (key, cb) {
-    // If no key given make a new 'private' swarm
-    if (!key) key = crypto.randomBytes(32).toString('hex')
-    if (Array.isArray(key)) return connectMultipleSwarms(key, cb)
-    if (key === '') key = DEFAULT_TOPIC
-    metadb.connections[key] = _swarm(key)
-    metadb.knownSwarms = metadb.knownSwarms || new Set()
-    metadb.swarmdb.put(key, true, (err) => {
-      if (err) log('[swarm] Error writing key to db', err)
-    })
-    metadb.knownSwarms.add(key)
-    if (cb) cb(null, Object.keys(metadb.connections))
-  }
-  return connect
+  class Swarm {
+    constructor () {
+      this.swarm = hyperswarm({ validatepeer: (peer) => !log(peer), multiplex: true })
 
-  function _swarm (key) {
-    const topic = keyToTopic(key)
-    var swarm = hyperswarm({ validatepeer: (peer) => !log(peer) })
-    swarm.join(topic, { lookup: true, announce: true })
-    log('Connected to ', key.toString('hex'), '  Listening for peers....')
-    swarm.on('connection', (socket, details) => {
-      const isInitiator = !!details.client
-      metadb.events.emit('ws', JSON.stringify({ connections: { addPeer: key.toString('hex') } }))
-      // handshake to prove knowledge of swarm 'key'
-      handshake(isInitiator, socket, key, (err) => {
-        if (err) {
-          log(err)
-        } else {
-          pump(socket, metadb.core.replicate(isInitiator, { live: true }), socket)
-        }
-      })
+      this.swarm.on('connection', (socket, details) => {
+        const topics = details.peer
+          ? [details.peer.topic]
+          : Object.keys(metadb.swarms).filter(s => metadb.swarms[s]).map(keyToTopic)
 
-      // TODO peer authentication not working
-      // const protocol = new Protocol(isInitiator)
-      // pump(socket, protocol, socket)
-      // auth(protocol, {
-      //   authKeyPair: metadb.keypair,
-      //   onauthenticate (peerAuthKey, cb) {
-      //     if (!metadb.connectedPeers.includes(peerAuthKey.toString('hex'))) metadb.connectedPeers.push(peerAuthKey.toString('hex'))
-      //
-      //     log('New peer connected with key ', peerAuthKey.toString('hex'))
-      //     cb(null, true)
-      //     socket.on('close', () => {
-      //       log('Peer has disconnected ', peerAuthKey.toString('hex'))
-      //       metadb.connectedPeers = metadb.connectedPeers.filter(p => p !== peerAuthKey.toString('hex'))
-      //     })
-      //   },
-      //   onprotocol (protocol) {
-      //     // metadb.core.replicate(isInitiator, { live: true, stream: protocol })
-      //     metadb.core.replicate(isInitiator, { live: true }).pipe(protocol)
-      //
-      //     // pump(protocol, metadb.core.replicate(isInitiator, { live: true }), protocol)
-      //   }
-      // })
-      //
-      socket.on('error', (err) => {
-        log('[swarm] Error from connection', err)
-      })
-      socket.on('close', () => {
-        metadb.events.emit('ws', JSON.stringify({ connections: { removePeer: key.toString('hex') } }))
-      })
-    })
-
-    return swarm
-  }
-
-  function connectMultipleSwarms (keys, callback) {
-    pull(
-      pull.values(keys),
-      pull.asyncMap(connect),
-      pull.collect((err, swarms) => {
-        if (err) return callback(err)
-        callback(null, swarms.slice(-1)[0])
-      })
-    )
-  }
-}
-
-module.exports.unswarm = function (metadb) {
-  const unswarm = function (key, cb) {
-    // if no swarm specified, disconnect from everything
-    if (!key) key = Object.keys(metadb.connections)
-    if (Array.isArray(key)) return disconnectMultipleSwarms(key, cb)
-    if (key === '') key = DEFAULT_TOPIC
-    if (metadb.connections[key]) {
-      metadb.connections[key].leave(keyToTopic(key))
-      metadb.connections[key].destroy()
-      delete metadb.connections[key]
-    }
-    metadb.swarmdb.put(key, false, (err) => {
-      if (err) log('[swarm] Error writing key to db', err)
-    })
-    log(`[swarm] Unswarmed from ${key}. Active connections are now: ${Object.keys(metadb.connections)}`)
-    if (cb) cb(null, Object.keys(metadb.connections))
-  }
-  return unswarm
-
-  function disconnectMultipleSwarms (keys, callback) {
-    pull(
-      pull.values(keys),
-      pull.asyncMap(unswarm),
-      pull.collect((err, swarms) => {
-        if (err) return callback(err)
-        callback(null, swarms.slice(-1)[0])
-      })
-    )
-  }
-}
-
-module.exports.loadSwarms = function (metadb) {
-  return function (callback) {
-    metadb.knownSwarms = metadb.knownSwarms || new Set()
-    const swarmStream = metadb.swarmdb.createReadStream()
-    swarmStream.on('data', function (entry) {
-      metadb.knownSwarms.add(entry.key)
-      console.log('entry', entry)
-      if (entry.value) {
-        metadb.swarm(entry.key, (err) => {
-          if (err) return callback(err)
+        details.on('topic', (topic) => {
+          console.log('**************************************', topic)
         })
-      }
-    })
-    swarmStream.once('end', callback)
-    swarmStream.once('error', callback)
-  }
-}
+        const isInitiator = !!details.client
+        const plex = multiplex()
+        plex.on('error', (err) => {
+          log('Error from multiplex', err)
+        })
+        const indexStream = plex.createSharedStream('metadb')
+        indexStream.on('error', console.log)
 
-function keyToTopic (key) {
-  //  key can be a string, which is hashed together with
-  //  a unique 'context' string.
-  if (typeof key === 'string') key = Buffer.from(key)
-  assert(Buffer.isBuffer(key), 'Badly formatted key')
-  return keyedHash(key, CONTEXT)
+        const transferStream = plex.createSharedStream('file-transfer')
+        transferStream.on('error', console.log)
+
+        pump(socket, plex, socket)
+
+        // Handshake gets remote pk and proves knowledge of swarm 'key'
+        handshake(metadb.keypair, !isInitiator, transferStream, topics, onPeer, (err, cryptoParams) => {
+          if (err) {
+            log(err) // TODO also close the connection?
+          } else {
+            transferStream.cryptoParams = cryptoParams
+            const remotePk = cryptoParams.remotePk
+
+            const deduplicated = details.deduplicate(metadb.keypair.publicKey, Buffer.from(remotePk, 'hex'))
+            log('To deduplicate:', metadb.keypair.publicKey.toString('hex'), remotePk)
+            log('Deduplicated:', deduplicated, 'isinitiator:', !isInitiator)
+
+            if (!deduplicated) {
+              // if dedup is false and we are initiator, they will be the one to drop a connection
+              // if (weAreInitiator) we know this connection will live
+
+              pump(indexStream, metadb.core.replicate(isInitiator, { live: true }), indexStream)
+
+              if (metadb.connectedPeers[remotePk]) {
+                metadb.connectedPeers[remotePk].addStream(transferStream)
+              } else {
+                metadb.connectedPeers[remotePk] = FileTransfer(metadb)(transferStream)
+              }
+
+              metadb.emitWs({ connectedPeers: Object.keys(metadb.connectedPeers) })
+
+              transferStream.on('close', () => {
+                console.log('Transfer stream closed')
+                // delete metadb.connectedPeers[remotePublicKey.toString('hex')]
+                //  metadb.emitWs({ connectedPeers: Object.keys(metadb.connectedPeers) })
+              })
+              transferStream.on('error', () => {
+                console.log('transferstream error')
+              })
+            }
+          }
+        })
+
+        socket.on('error', (err) => {
+          log('[swarm] Error from connection', err)
+        })
+      })
+
+      // This is where we can add block or allow lists
+      function onPeer (remotePk, callback) {
+        // Accept everybody
+        return callback(null, true)
+      }
+    }
+
+    connect (key, cb) {
+      // If no key given make a new 'private' swarm
+      if (!key) key = crypto.randomBytes(32).toString('hex')
+      if (Array.isArray(key)) return this.connectMultipleSwarms(key, cb)
+      metadb.swarms = metadb.swarms || {}
+      metadb.swarms[key] = true
+
+      const topic = keyToTopic(key)
+      this.swarm.join(topic, { lookup: true, announce: true })
+
+      log('Connected to ', key, '  Listening for peers....')
+
+      metadb.swarmdb.put(key, true, (err) => {
+        if (err) log('[swarm] Error writing key to db', err)
+      })
+      if (cb) cb(null, Object.keys(metadb.swarms).filter(s => metadb.swarms[s]))
+    }
+
+
+    disconnect (key, cb) {
+      // if no swarm specified, disconnect from everything
+      if (!key) key = Object.keys(metadb.swarms).filter(s => metadb.swarms[s])
+      if (Array.isArray(key)) return this.disconnectMultipleSwarms(key, cb)
+      if (metadb.swarms[key]) {
+        // leave takes a callback, but we dont wait for it here
+        this.swarm.leave(keyToTopic(key))
+        metadb.swarms[key] = false
+      }
+
+      metadb.swarmdb.put(key, false, (err) => {
+        if (err) log('[swarm] Error writing key to db', err)
+      })
+
+      log(`[swarm] Unswarmed from ${key}. Active connections are now: ${Object.keys(metadb.swarms).filter(s => metadb.swarms[s])}`)
+      if (cb) cb(null, Object.keys(metadb.swarms).filter(s => metadb.swarms[s]))
+    }
+
+    connectMultipleSwarms (keys, callback) {
+      pull(
+        pull.values(keys),
+        pull.asyncMap(this.connect),
+        pull.collect((err, swarms) => {
+          if (err) return callback(err)
+          callback(null, swarms.slice(-1)[0])
+        })
+      )
+    }
+
+    disconnectMultipleSwarms (keys, callback) {
+      pull(
+        pull.values(keys),
+        pull.asyncMap(this.disconnect),
+        pull.collect((err, swarms) => {
+          if (err) return callback(err)
+          callback(null, swarms.slice(-1)[0])
+        })
+      )
+    }
+
+    loadSwarms (callback) {
+      const self = this
+      pull(
+        pullLevel.read(metadb.swarmdb, { live: false }),
+        pull.filter((entry) => {
+          metadb.swarms[entry.key] = entry.value
+          return entry.value
+        }),
+        pull.asyncMap((entry, cb) => {
+          self.connect(entry.key, cb)
+        }),
+        pull.collect(callback)
+      )
+    }
+  }
+  return () => new Swarm()
+
+  function keyToTopic (key) {
+    //  key can be a string, which is hashed together with
+    //  a unique 'context' string.
+    if (typeof key === 'string') key = Buffer.from(key)
+    assert(Buffer.isBuffer(key), 'Badly formatted key')
+    return crypto.keyedHash(key, CONTEXT)
+  }
 }

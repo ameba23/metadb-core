@@ -11,7 +11,7 @@ const log = console.log // TODO
 
 const createFilesView = require('./views/files')
 const createPeersView = require('./views/peers')
-const createRequestsView = require('./views/requests')
+// const createInvitesView = require('./views/invites')
 
 const IndexFiles = require('./index-files')
 const Swarm = require('./swarm')
@@ -19,6 +19,7 @@ const config = require('./config')
 const crypto = require('./crypto')
 const Query = require('./queries')
 const Publish = require('./publish')
+const Request = require('./file-transfer/request')
 
 const LOCAL_FEED = 'local'
 const DB = (dir) => path.join(dir, 'feeds')
@@ -27,6 +28,7 @@ const VIEWS = (dir) => path.join(dir, 'views')
 const FILES = 'f'
 const PEERS = 'p'
 const REQUESTS = 'r'
+// const INVITES = 'i'
 const SHARES = 's'
 
 module.exports = (opts) => new MetaDb(opts)
@@ -49,12 +51,12 @@ class MetaDb {
     this.repliedTo = []
     this.config = {}
     this.config.shares = {}
-    this.connections = {}
+    this.swarms = {}
     this.query = Query(this)
     this.publish = Publish(this)
-    this.connectedPeers = []
-    this.activeDownloads = []
-    this.activeUploads = []
+    this.connectedPeers = {}
+    this.uploadQueue = []
+    this.swarm = Swarm(this)()
 
     this.core = kappa(
       DB(this.storage), {
@@ -72,33 +74,20 @@ class MetaDb {
     this.core.use('peers', createPeersView(
       sublevel(this.db, PEERS, { valueEncoding: 'json' })
     ))
-    this.core.use('requests', createRequestsView(
-      sublevel(this.db, REQUESTS, { valueEncoding: 'json' })
-    ))
+    // this.core.use('invites', createInvitesView(
+    //   sublevel(this.db, INVITES, { valueEncoding: 'json' })
+    // ))
+    this.requestsdb = sublevel(this.db, REQUESTS, { valueEncoding: 'json' })
 
     this.sharedb = sublevel(this.db, SHARES, { valueEncoding: 'json' })
     this.shareTotals = sublevel(this.db, 'ST')
     this.swarmdb = sublevel(this.db, 'SW', { valueEncoding: 'json' })
     this.files = this.core.api.files
     this.peers = this.core.api.peers
-    this.requests = this.core.api.requests
+    // this.invites = this.core.api.invites
     this.events = new EventEmitter()
-    // this.events.on('ws', () => {
-    //   console.log('message locally')
-    // })
     this.files.events.on('update', () => {})
     this.peers.events.on('update', () => {})
-    this.requests.events.on('update', (messagesFound) => {
-      // TODO
-      this.query.processRequestsFromOthers((err, networks) => {
-        if (err) console.log(err)
-        console.log('networks from uploads', networks)
-      })
-      this.query.processRequestsFromSelf((err, networks) => {
-        if (err) console.log(err)
-        console.log('networks from downloads', networks)
-      })
-    })
   }
 
   ready (cb) {
@@ -114,8 +103,10 @@ class MetaDb {
         this.keyHex = feed.key.toString('hex')
         this.kappaPrivate.secretKey = feed.secretKey
         this.events.emit('ws', 'ready')
+
         // Connect to swarms if any were left connected:
-        Swarm.loadSwarms(this)((err) => {
+        console.log(this.swarm)
+        this.swarm.loadSwarms((err) => {
           if (err) log('reading swarmdb:', err) // TODO
           this.loadConfig((err) => {
             if (err) return cb(err)
@@ -150,9 +141,9 @@ class MetaDb {
         bytesInDb: this.bytesInDb,
         peers,
         peerNames: this.peerNames,
-        connections: Object.keys(this.connections),
+        connections: Object.keys(this.swarms).filter(s => this.swarms[s]),
         config: this.config,
-        connectedPeers: this.connectedPeers,
+        connectedPeers: Object.keys(this.connectedPeers),
         downloadPath: this.downloadPath,
         homeDir
       })
@@ -176,7 +167,7 @@ class MetaDb {
     }
   }
 
-  indexFiles (dir, cb) { return IndexFiles(this)(dir, cb) }
+  indexFiles (dir, opts, started, finished) { return IndexFiles(this)(dir, opts, started, finished) }
 
   shares () {
     // TODO: this should map shares to files somehow for displaying in the interface
@@ -185,15 +176,15 @@ class MetaDb {
     // )
   }
 
+  request (...args) { return Request(this)(...args) }
+  unrequest (...args) { return Request.unrequest(this)(...args) }
+
   writeConfig (cb) { return config.save(this)(cb) }
   loadConfig (cb) { return config.load(this)(cb) }
 
-  swarm (key, cb) { return Swarm(this)(key, cb) }
-  unswarm (key, cb) { return Swarm.unswarm(this)(key, cb) }
-
   stop (cb) {
     // TODO: gracefully stop transfers
-    this.unswarm(null, (err) => {
+    this.swarm.disconnect(null, (err) => {
       if (err) log('Difficulty disconnecting from swarm', err)
       cb()
       process.exit(0)

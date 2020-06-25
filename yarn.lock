@@ -475,6 +475,16 @@ duplexer@^0.1.1:
   resolved "https://registry.yarnpkg.com/duplexer/-/duplexer-0.1.1.tgz#ace6ff808c1ce66b57d1ebf97977acb02334cfc1"
   integrity sha1-rOb/gIwc5mtX0ev5eXessCM0z8E=
 
+duplexify@^3.4.2:
+  version "3.7.1"
+  resolved "https://registry.yarnpkg.com/duplexify/-/duplexify-3.7.1.tgz#2a4df5317f6ccfd91f86d6fd25d8d8a103b88309"
+  integrity sha512-07z8uv2wMyS51kKhD1KsdXJg5WQ6t93RneqRxUHnskXVtlYYkLqM0gqStQZ3pj073g687jPCHrqNfCzawLYh5g==
+  dependencies:
+    end-of-stream "^1.0.0"
+    inherits "^2.0.1"
+    readable-stream "^2.0.0"
+    stream-shift "^1.0.0"
+
 ed2curve@^0.1.4:
   version "0.1.4"
   resolved "https://registry.yarnpkg.com/ed2curve/-/ed2curve-0.1.4.tgz#94a44248bb87da35db0eff7af0aa576168117f59"
@@ -497,7 +507,7 @@ encoding-down@^6.2.0, encoding-down@^6.3.0:
     level-codec "^9.0.0"
     level-errors "^2.0.0"
 
-end-of-stream@^1.1.0, end-of-stream@^1.4.1:
+end-of-stream@^1.0.0, end-of-stream@^1.1.0, end-of-stream@^1.4.1:
   version "1.4.4"
   resolved "https://registry.yarnpkg.com/end-of-stream/-/end-of-stream-1.4.4.tgz#5ae64a5f45057baf3626ec14da0ca5e4b2431eb0"
   integrity sha512-+uw1inIHVPQoaVuHzRyXd21icM+cnt4CzD5rW+NC1wjOUSTOs+Te7FOv7AhN7vS9x/oIyhLP5PR1H+phQAHu5Q==
@@ -778,7 +788,7 @@ hypercore@^8.3.0:
   optionalDependencies:
     fd-lock "^1.0.2"
 
-hyperswarm@^2.5.0:
+hyperswarm@^2.14.0:
   version "2.14.0"
   resolved "https://registry.yarnpkg.com/hyperswarm/-/hyperswarm-2.14.0.tgz#325357c78cabec76e3e0bb109470bf760c6fafe2"
   integrity sha512-vJI6vVH0/PjlCVdRJLXr1an0guRSYRE1uE5wnEUmgjp4erYBIOALn+0YR/W95fTCZfp9Y+YA2Ku9npo87/tqqg==
@@ -1216,6 +1226,17 @@ multifeed@^5.0.0:
     random-access-memory "^3.1.1"
     through2 "^3.0.0"
 
+multiplex@^6.7.0:
+  version "6.7.0"
+  resolved "https://registry.yarnpkg.com/multiplex/-/multiplex-6.7.0.tgz#ff73e4e40079170c4442d160965658f8def960c2"
+  integrity sha1-/3Pk5AB5FwxEQtFgllZY+N75YMI=
+  dependencies:
+    duplexify "^3.4.2"
+    inherits "^2.0.1"
+    readable-stream "^2.0.2"
+    varint "^4.0.0"
+    xtend "^4.0.0"
+
 music-metadata@^6.3.6:
   version "6.4.0"
   resolved "https://registry.yarnpkg.com/music-metadata/-/music-metadata-6.4.0.tgz#c1026c3fac4368e2e42e8114e60ac77cb7da10be"
@@ -1593,7 +1614,7 @@ readable-stream@2.2.9:
     string_decoder "~1.0.0"
     util-deprecate "~1.0.1"
 
-readable-stream@^2.0.0, readable-stream@^2.0.5, readable-stream@^2.1.4, readable-stream@~2.3.6:
+readable-stream@^2.0.0, readable-stream@^2.0.2, readable-stream@^2.0.5, readable-stream@^2.1.4, readable-stream@~2.3.6:
   version "2.3.7"
   resolved "https://registry.yarnpkg.com/readable-stream/-/readable-stream-2.3.7.tgz#1eca1cf711aef814c04f62252a36a62f6cb23b57"
   integrity sha512-Ebho8K4jIbHAxnuxi7o42OrZgF/ZTNcsZj6nRKyUmkhLFq8CHItp/fy6hQZuZmP/n3yZ9VBUbp4zz/mX8hmYPw==
@@ -1845,6 +1866,11 @@ stream-collector@^1.0.1:
   integrity sha1-TU5V8XE1YSGyxfZVn5RHBaso2xU=
   dependencies:
     once "^1.3.1"
+
+stream-shift@^1.0.0:
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/stream-shift/-/stream-shift-1.0.1.tgz#d7088281559ab2778424279b0877da3c392d5a3d"
+  integrity sha512-AiisoFqQ0vbGcZgQPY1cdP2I76glaVA/RauYR4G4thNFgkTqr90yXTo4LYX60Jl+sIlPNHHdGSwo01AvbKUSVQ==
 
 stream-to-pull-stream@^1.7.1:
   version "1.7.3"

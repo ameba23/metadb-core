@@ -1,0 +1,29 @@
+syntax = "proto2";
+
+message File {
+  required bytes hash = 1;
+  optional uint64 start = 2;
+  optional uint64 length = 3;
+}
+
+message Request {
+  repeated File files = 1;
+}
+
+message Unrequest {
+  repeated File files = 1;
+}
+
+message Queued {
+  required uint64 queuePosition = 1;
+  optional uint64 queueBytes = 2;
+  optional uint64 queueFiles = 3;
+  // request reference?
+  repeated File files = 4;
+}
+
+message Refuse {
+  repeated File files = 1;
+  optional uint64 reason = 2;
+  // request reference?
+}

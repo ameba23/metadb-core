@@ -1,7 +1,7 @@
 const EventEmitter = require('events').EventEmitter
 const pullLevel = require('pull-level')
 const pull = require('pull-stream')
-const { isRequest, isReply } = require('../schemas')
+const { isInvite } = require('../schemas')
 
 module.exports = function (level) {
   const events = new EventEmitter()
@@ -18,37 +18,19 @@ module.exports = function (level) {
         foundOne = true
         pending++
         delete msg.value.version
-        if (msg.value.type === 'request') {
-          delete msg.value.type
-          const dbKey = msg.key + '@' + msg.seq
-          level.get(dbKey, (err) => {
-            if (err) {
-              ops.push({
-                type: 'put',
-                key: msg.key + '@' + msg.seq,
-                value: msg.value
-              })
-            }
-            if (!--pending) done()
-          })
-        } else {
-          level.get(msg.value.branch, (err, requestMsg) => {
-            if (err) requestMsg = {}
-            delete msg.value.type
-            msg.value.from = msg.key
-            requestMsg.replies = requestMsg.replies || []
-            // TODO should be testing for msgSeq, not link, but we need to first include it in the reply msg
-            if (!requestMsg.replies.find(repMsg => (repMsg.link === msg.value.link))) {
-              requestMsg.replies.push(msg.value)
-              ops.push({
-                type: 'put',
-                key: msg.value.branch,
-                value: requestMsg
-              })
-            }
-            if (!--pending) done()
-          })
-        }
+        delete msg.value.type
+        // TODO dbkey
+        const dbKey = msg.key + '@' + msg.seq
+        level.get(dbKey, (err) => {
+          if (err) {
+            ops.push({
+              type: 'put',
+              key: msg.key + '@' + msg.seq,
+              value: msg.value
+            })
+          }
+          if (!--pending) done()
+        })
       })
       if (!pending) done()
 
@@ -77,13 +59,13 @@ module.exports = function (level) {
         )
       },
       pullFromFeedId: function (core, feedId) {
-        return core.api.requests.pull({
+        return core.api.invites.pull({
           gte: feedId,
           lte: feedId + '~'
         })
       },
       pullNotFromFeedId: function (core, feedId) {
-        return core.api.requests.pull({
+        return core.api.invites.pull({
           // TODO
           gt: feedId,
           lt: feedId
@@ -107,7 +89,7 @@ module.exports = function (level) {
 function sanitize (msg) {
   if (typeof msg !== 'object') return null
   if (typeof msg.value !== 'object') return null
-  if (!['request', 'reply'].includes(msg.value.type)) return null
-  if (!(isRequest(msg.value) || isReply(msg.value))) return null
+  if (msg.value.type !== 'invite') return null
+  if (!isInvite(msg.value)) return null
   return msg
 }
