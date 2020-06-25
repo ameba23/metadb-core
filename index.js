@@ -105,7 +105,6 @@ class MetaDb {
         this.events.emit('ws', 'ready')
 
         // Connect to swarms if any were left connected:
-        console.log(this.swarm)
         this.swarm.loadSwarms((err) => {
           if (err) log('reading swarmdb:', err) // TODO
           this.loadConfig((err) => {
