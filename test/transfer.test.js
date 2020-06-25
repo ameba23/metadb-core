@@ -20,10 +20,10 @@ test('request and reply, 2 actors', t => {
           t.error(err)
           taker.ready(() => {
             giver.buildIndexes(() => {
-              giver.swarm('testswarm', (err, swarms) => {
+              giver.swarm.connect('testswarm', (err, swarms) => {
                 t.error(err, 'No err on swarm')
                 taker.buildIndexes(() => {
-                  taker.swarm('testswarm', (err, swarms) => {
+                  taker.swarm.connect('testswarm', (err, swarms) => {
                     t.error(err, 'No err on swarm')
                     // wait till we hear about another feed
                     taker.core._logs.on('feed', () => {

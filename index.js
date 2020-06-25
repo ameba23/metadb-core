@@ -51,11 +51,12 @@ class MetaDb {
     this.repliedTo = []
     this.config = {}
     this.config.shares = {}
-    this.connections = {}
+    this.swarms = {}
     this.query = Query(this)
     this.publish = Publish(this)
     this.connectedPeers = {}
     this.uploadQueue = []
+    this.swarm = Swarm(this)()
 
     this.core = kappa(
       DB(this.storage), {
@@ -104,7 +105,8 @@ class MetaDb {
         this.events.emit('ws', 'ready')
 
         // Connect to swarms if any were left connected:
-        Swarm.loadSwarms(this)((err) => {
+        console.log(this.swarm)
+        this.swarm.loadSwarms((err) => {
           if (err) log('reading swarmdb:', err) // TODO
           this.loadConfig((err) => {
             if (err) return cb(err)
@@ -139,7 +141,7 @@ class MetaDb {
         bytesInDb: this.bytesInDb,
         peers,
         peerNames: this.peerNames,
-        connections: Object.keys(this.connections),
+        connections: Object.keys(this.swarms).filter(s => this.swarms[s]),
         config: this.config,
         connectedPeers: Object.keys(this.connectedPeers),
         downloadPath: this.downloadPath,
@@ -180,12 +182,9 @@ class MetaDb {
   writeConfig (cb) { return config.save(this)(cb) }
   loadConfig (cb) { return config.load(this)(cb) }
 
-  swarm (key, cb) { return Swarm(this)(key, cb) }
-  unswarm (key, cb) { return Swarm.unswarm(this)(key, cb) }
-
   stop (cb) {
     // TODO: gracefully stop transfers
-    this.unswarm(null, (err) => {
+    this.swarm.disconnect(null, (err) => {
       if (err) log('Difficulty disconnecting from swarm', err)
       cb()
       process.exit(0)

@@ -6,7 +6,7 @@ const concat = Buffer.concat
 const EMPTY = Buffer.from('')
 const FIRSTPASSLENGTH = sodium.crypto_scalarmult_BYTES + sodium.crypto_secretbox_MACBYTES + sodium.crypto_secretbox_NONCEBYTES
 const SECONDPASSLENGTH = sodium.crypto_sign_PUBLICKEYBYTES + sodium.crypto_sign_BYTES + sodium.crypto_secretbox_MACBYTES + sodium.crypto_secretbox_NONCEBYTES
-
+const PROTOCOL = Buffer.from('metadb handshake version 0.0.1')
 // Handshake - ephemeral keys are exchanged, then public signing keys along with a fresh signature
 
 // The swarm key is added to prove that both parties know the 'key' of the swarm
@@ -28,20 +28,23 @@ const SECONDPASSLENGTH = sodium.crypto_sign_PUBLICKEYBYTES + sodium.crypto_sign_
 
 // stream key is then: box[k|a.b|b.A|B.a]
 
-module.exports = function (ourStaticKeypair, weAreInitiator, stream, swarmKey, callback) {
-  // TODO this function will be passed in:
-  const onPeer = function (remoteStaticPk, callback) {
+module.exports = function (ourStaticKeypair, weAreInitiator, stream, swarmTopics, onPeer, callback) {
+  onPeer = onPeer || function (remoteStaticPk, callback) {
     // Accept everybody
     return callback(null, true)
   }
+
   const ephKeypair = curveKeypair()
   const sign = (message) => signDetached(message, ourStaticKeypair.secretKey)
   let remoteStaticPK
   let remoteEphPk
   const nonces = {}
 
+  // Copy array so we can modify it here
+  const topics = swarmTopics.slice()
+
   // Add handshake version number to key
-  const key = crypto.genericHash(Buffer.from('metadb handshake version 0.0.1'), swarmKey)
+  const key = crypto.genericHash(PROTOCOL)
 
   const messageHandler = function (data) {
     try {
@@ -53,7 +56,10 @@ module.exports = function (ourStaticKeypair, weAreInitiator, stream, swarmKey, c
         if (weAreInitiator) {
           // Respond with 2nd pass
           const plain = concat([ourStaticKeypair.publicKey, sign(concat([ephKeypair.publicKey, remoteEphPk]))])
-          const encryptionKey = crypto.genericHash(concat([key, scalar(ephKeypair.secretKey, remoteEphPk)]))
+          const encryptionKey = crypto.genericHash(concat([
+            crypto.genericHash(PROTOCOL, swarmTopics[0]),
+            scalar(ephKeypair.secretKey, remoteEphPk)
+          ]))
 
           const ciphertext = box(plain, encryptionKey)
           nonces.tx = ciphertext.slice(ciphertext.length - sodium.crypto_secretbox_NONCEBYTES)
@@ -66,14 +72,10 @@ module.exports = function (ourStaticKeypair, weAreInitiator, stream, swarmKey, c
         // Assume this is a second pass message
         assert(data.length === SECONDPASSLENGTH, 'Handshake failed') // TODO
         log(weAreInitiator, ourStaticKeypair.publicKey.slice(28).toString('hex'), '2nd pass recvd')
-        const encryptionKey = crypto.genericHash(concat([
-          key,
-          scalar(ephKeypair.secretKey, remoteEphPk),
-          weAreInitiator ? scalar(crypto.edToCurveSk(ourStaticKeypair.secretKey), remoteEphPk) : EMPTY
-        ]))
 
-        const plain = open(data, encryptionKey)
-        assert(plain, 'Handshake decryption error')
+        const { plain, topic } = tryToOpen(topics.pop())
+
+        assert(plain, 'Handshake decryption error' + topics.length)
         remoteStaticPK = plain.slice(0, sodium.crypto_sign_PUBLICKEYBYTES)
         const message = concat([
           remoteEphPk,
@@ -94,7 +96,7 @@ module.exports = function (ourStaticKeypair, weAreInitiator, stream, swarmKey, c
             const plain = concat([ourStaticKeypair.publicKey, sign(concat([ephKeypair.publicKey, remoteEphPk, remoteStaticPK]))])
 
             const encryptionKey = crypto.genericHash(concat([
-              key,
+              crypto.genericHash(PROTOCOL, topic),
               scalar(ephKeypair.secretKey, remoteEphPk),
               scalar(ephKeypair.secretKey, crypto.edToCurvePk(remoteStaticPK))
             ]))
@@ -108,7 +110,7 @@ module.exports = function (ourStaticKeypair, weAreInitiator, stream, swarmKey, c
           stream.removeListener('data', messageHandler)
 
           const transportEncryptionKey = crypto.genericHash64(concat([
-            key,
+            crypto.genericHash(PROTOCOL, topic),
             scalar(ephKeypair.secretKey, remoteEphPk),
             weAreInitiator
               ? scalar(crypto.edToCurveSk(ourStaticKeypair.secretKey), remoteEphPk)
@@ -131,6 +133,19 @@ module.exports = function (ourStaticKeypair, weAreInitiator, stream, swarmKey, c
     } catch (err) {
       stream.removeListener('data', messageHandler)
       return callback(err)
+    }
+
+    function tryToOpen (keyToTry) {
+      const encryptionKey = crypto.genericHash(concat([
+        crypto.genericHash(PROTOCOL, keyToTry),
+        scalar(ephKeypair.secretKey, remoteEphPk),
+        weAreInitiator ? scalar(crypto.edToCurveSk(ourStaticKeypair.secretKey), remoteEphPk) : EMPTY
+      ]))
+
+      const plain = open(data, encryptionKey)
+      if (plain || !weAreInitiator) return { plain, topic: keyToTry }
+      const next = topics.pop()
+      return next ? tryToOpen(next) : false
     }
   }
 

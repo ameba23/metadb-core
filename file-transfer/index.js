@@ -87,7 +87,9 @@ module.exports = function (metadb) {
       const self = this
       stream.on('close', () => {
         console.log('stream closed!', stream.destroyed)
-        self.onReady()
+        if (self.streams.every(s => s.destroyed)) {
+          console.log('All streams from peer are destroyed')
+        }
       })
 
       const { nonces, encryptionKeySplit } = stream.cryptoParams
