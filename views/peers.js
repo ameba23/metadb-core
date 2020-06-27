@@ -3,6 +3,8 @@ const pullLevel = require('pull-level')
 const pull = require('pull-stream')
 const { isAbout, isHeader } = require('../schemas')
 
+// Peers index
+
 module.exports = function (level) {
   const events = new EventEmitter()
 

@@ -80,7 +80,7 @@ module.exports.unrequest = function (metadb) {
       pull.values(files),
       pull.asyncMap((file, cb) => {
         metadb.requestsdb.del(file, (err) => {
-          if (err) { console.log('error!', err) }
+          if (err) { console.log('Database error!', err) }
           cb(err, file)
         })
       }),

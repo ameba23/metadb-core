@@ -42,7 +42,6 @@ module.exports = function indexFiles (metadb) {
             let hash
             let gotMetadata
             const sha256Instance = new Sha256Instance()
-            // TODO put this inside try/catch
             const readStream = fs.createReadStream(filename)
             readStream.on('data', (chunk) => {
               sha256Instance.update(chunk)
@@ -62,6 +61,8 @@ module.exports = function indexFiles (metadb) {
                 publishMetadata()
               }
             })
+            readStream.on('error', () => { return cb() })
+
             extract(filename, (err, metadata) => {
               if (err) return cb(err) // or just carry on?
               gotMetadata = metadata
@@ -78,8 +79,10 @@ module.exports = function indexFiles (metadb) {
                 size,
                 metadata: gotMetadata
               }
+
+              // Check if an identical entry exists in the feed
+              // TODO this could maybe be speeded up by first checking metadb.sharedb.get(hash)
               let duplicate = false
-              // check if an identical entry exists in the feed
               const feedStream = metadb.localFeed.createReadStream({ live: false })
               feedStream.on('data', (data) => {
                 delete data.timestamp

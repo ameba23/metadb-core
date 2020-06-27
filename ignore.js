@@ -2,10 +2,15 @@ const LineReader = require('readline')
 const fs = require('fs')
 const minimatch = require('minimatch')
 const path = require('path')
+const log = console.log
 
 const filename = path.join(path.resolve(__dirname), './metadb-ignore')
 const ignore = []
 var ready = false
+
+// When indexing, ignore particular files using 'minimatch'
+// So we can have a file similar to .gitignore
+// TODO should be a class
 
 module.exports = { setup, filesWeWant }
 
@@ -20,11 +25,12 @@ function setup (callback) {
     ready = true
     callback()
   })
+  lineReader.on('error', callback)
 }
 
 function filesWeWant (file) {
-  // TODO throw err if setup not run
+  if (!ready) throw new Error('Ignore not set up')
 
-  if (ignore.find(pat => minimatch(file, pat))) console.log('*********ingoring file ', file)
+  if (ignore.find(pat => minimatch(file, pat))) log('Ignoring file from ignore list', file)
   return !ignore.find(pat => minimatch(file, pat))
 }

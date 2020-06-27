@@ -3,6 +3,8 @@ const pullLevel = require('pull-level')
 const pull = require('pull-stream')
 const { isInvite } = require('../schemas')
 
+// The invites index (currently not used)
+
 module.exports = function (level) {
   const events = new EventEmitter()
   let foundOne = false

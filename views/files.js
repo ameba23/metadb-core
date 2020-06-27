@@ -10,20 +10,8 @@ const PATH = 'p!'
 const HOLDER = 'o!'
 const TIMESTAMP = 't!'
 
-function arrayMerge (destArray, sourceArray) {
-  return uniq(destArray.concat(sourceArray))
-}
-
-function customMerge (key) {
-  if (key === 'filename') {
-    return function (a, b) {
-      if (a === b) return a
-      if (!Array.isArray(a)) a = [a]
-      if (!Array.isArray(b)) b = [b]
-      return arrayMerge(a, b)
-    }
-  }
-}
+// The files index
+// TODO also parse 'rmFiles' messages
 
 module.exports = function (level) {
   const events = new EventEmitter()
@@ -201,4 +189,19 @@ function sanitize (msg) {
   if (!isAddFile(msg.value)) return null
   // if (!(isAddFile(msg.value) || isFileComment(msg.value))) return null
   return msg
+}
+
+function arrayMerge (destArray, sourceArray) {
+  return uniq(destArray.concat(sourceArray))
+}
+
+function customMerge (key) {
+  if (key === 'filename') {
+    return function (a, b) {
+      if (a === b) return a
+      if (!Array.isArray(a)) a = [a]
+      if (!Array.isArray(b)) b = [b]
+      return arrayMerge(a, b)
+    }
+  }
 }

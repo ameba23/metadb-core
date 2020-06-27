@@ -30,6 +30,7 @@ const PEERS = 'p'
 const REQUESTS = 'r'
 // const INVITES = 'i'
 const SHARES = 's'
+const DOWNLOADED = 'd'
 
 module.exports = (opts) => new MetaDb(opts)
 
@@ -42,10 +43,10 @@ class MetaDb {
     this.isTest = opts.test
 
     // TODO downloadPath should be retrieved from and saved to config file
-    this.downloadPath = opts.test
+    this.config.downloadPath = opts.test
       ? path.join(this.storage, 'downloads')
       : path.join(this.storage, 'downloads') // os.homedir(), 'Downloads' ?
-    mkdirp.sync(this.downloadPath)
+    mkdirp.sync(this.config.downloadPath)
 
     this.peerNames = {}
     this.repliedTo = []
@@ -78,7 +79,7 @@ class MetaDb {
     //   sublevel(this.db, INVITES, { valueEncoding: 'json' })
     // ))
     this.requestsdb = sublevel(this.db, REQUESTS, { valueEncoding: 'json' })
-
+    this.downloadeddb = sublevel(this.db, DOWNLOADED, { valueEncoding: 'json' })
     this.sharedb = sublevel(this.db, SHARES, { valueEncoding: 'json' })
     this.shareTotals = sublevel(this.db, 'ST')
     this.swarmdb = sublevel(this.db, 'SW', { valueEncoding: 'json' })
@@ -131,19 +132,21 @@ class MetaDb {
   }
 
   getSettings (cb) {
+    const self = this
     if (!this.indexesReady) this.buildIndexes(this.getSettings(cb))
     this.query.peers((err, peers) => {
       if (err) return cb(err)
       cb(null, {
-        key: this.keyHex,
-        filesInDb: this.filesInDb,
-        bytesInDb: this.bytesInDb,
+        key: self.keyHex,
+        filesInDb: self.filesInDb,
+        bytesInDb: self.bytesInDb,
         peers,
-        peerNames: this.peerNames,
-        connections: Object.keys(this.swarms).filter(s => this.swarms[s]),
-        config: this.config,
-        connectedPeers: Object.keys(this.connectedPeers),
-        downloadPath: this.downloadPath,
+        peerNames: self.peerNames,
+        // connections: Object.keys(this.swarms).filter(s => this.swarms[s]),
+        swarms: self.swarms,
+        config: self.config,
+        connectedPeers: Object.keys(self.connectedPeers),
+        downloadPath: self.config.downloadPath,
         homeDir
       })
     })
@@ -155,9 +158,9 @@ class MetaDb {
       // TODO check this is not our current name before publishing
       this.publish.about(settings.name, done)
     }
-    if (settings.downloadPath && (this.downloadPath !== settings.downloadPath)) {
-      this.downloadPath = settings.downloadPath
-      mkdirp.sync(this.downloadPath)
+    if (settings.downloadPath && (this.config.downloadPath !== settings.downloadPath)) {
+      this.config.downloadPath = settings.downloadPath
+      mkdirp.sync(this.config.downloadPath)
       done()
     }
     function done (err) {
@@ -183,6 +186,7 @@ class MetaDb {
 
   stop (cb) {
     // TODO: gracefully stop transfers
+    // TODO: gracefully stop file indexing
     this.swarm.disconnect(null, (err) => {
       if (err) log('Difficulty disconnecting from swarm', err)
       cb()

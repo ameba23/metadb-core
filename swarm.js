@@ -91,6 +91,7 @@ module.exports = function (metadb) {
     }
 
     connect (key, cb) {
+      console.log('Connecting to: ',key)
       // If no key given make a new 'private' swarm
       if (!key) key = crypto.randomBytes(32).toString('hex')
       if (Array.isArray(key)) return this.connectMultipleSwarms(key, cb)
@@ -101,21 +102,23 @@ module.exports = function (metadb) {
       this.swarm.join(topic, { lookup: true, announce: true })
 
       log('Connected to ', key, '  Listening for peers....')
+      log(`[swarm] Active connections are now: ${Object.keys(metadb.swarms).filter(s => metadb.swarms[s])}`)
 
       metadb.swarmdb.put(key, true, (err) => {
         if (err) log('[swarm] Error writing key to db', err)
       })
-      if (cb) cb(null, Object.keys(metadb.swarms).filter(s => metadb.swarms[s]))
+      if (cb) cb(null, metadb.swarms)
     }
 
-
     disconnect (key, cb) {
+      console.log('Disconnecting from: ', key)
+      const self = this
       // if no swarm specified, disconnect from everything
       if (!key) key = Object.keys(metadb.swarms).filter(s => metadb.swarms[s])
       if (Array.isArray(key)) return this.disconnectMultipleSwarms(key, cb)
       if (metadb.swarms[key]) {
         // leave takes a callback, but we dont wait for it here
-        this.swarm.leave(keyToTopic(key))
+        self.swarm.leave(keyToTopic(key))
         metadb.swarms[key] = false
       }
 
@@ -124,7 +127,7 @@ module.exports = function (metadb) {
       })
 
       log(`[swarm] Unswarmed from ${key}. Active connections are now: ${Object.keys(metadb.swarms).filter(s => metadb.swarms[s])}`)
-      if (cb) cb(null, Object.keys(metadb.swarms).filter(s => metadb.swarms[s]))
+      if (cb) cb(null, metadb.swarms)
     }
 
     connectMultipleSwarms (keys, callback) {

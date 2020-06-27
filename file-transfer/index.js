@@ -25,6 +25,7 @@ module.exports = function (metadb) {
       this.streams = []
       this.addStream(stream)
       this.requestQueue = [] // pending requests *FROM* us
+      this.connected = true
 
       // this.ready = false
 
@@ -89,6 +90,7 @@ module.exports = function (metadb) {
         console.log('stream closed!', stream.destroyed)
         if (self.streams.every(s => s.destroyed)) {
           console.log('All streams from peer are destroyed')
+          self.connected = false
         }
       })
 
@@ -132,7 +134,7 @@ module.exports = function (metadb) {
         metadb.emitWs({ download: object })
       }
 
-      this.target = tar.extract(metadb.downloadPath, {
+      this.target = tar.extract(metadb.config.downloadPath, {
         mapStream: function (fileStream, header) {
           log('[tar] ', header.name)
           fileStream.on('data', (chunk) => {
@@ -168,6 +170,10 @@ module.exports = function (metadb) {
                 metadb.requestsdb.del(hashToCheck.toString('hex'), (err) => {
                   if (err) console.log(err)
                   console.log('Deleted entry from wishlist')
+                })
+                metadb.downloadeddb.put(hashToCheck.toString('hex'), name, (err) => {
+                  if (err) console.log(err)
+                  console.log('Added entry to downloadeddb')
                 })
                 // or rather metadb.requestsdb.put(hash, {closed:true})
               } else {
