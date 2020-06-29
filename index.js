@@ -9,18 +9,18 @@ const EventEmitter = require('events').EventEmitter
 // const thunky = require('thunky')
 const log = console.log // TODO
 
-const createFilesView = require('./views/files')
-const createPeersView = require('./views/peers')
+const createFilesView = require('./lib/views/files')
+const createPeersView = require('./lib/views/peers')
 // const createInvitesView = require('./views/invites')
 
-const IndexFiles = require('./index-files')
-const Swarm = require('./swarm')
-const config = require('./config')
-const crypto = require('./crypto')
-const Query = require('./queries')
-const Publish = require('./publish')
-const Request = require('./file-transfer/request')
-const { MetadbMessage } = require('./messages')
+const IndexFiles = require('./lib/index-files')
+const Swarm = require('./lib/swarm')
+const config = require('./lib/config')
+const crypto = require('./lib/crypto')
+const Query = require('./lib/queries')
+const Publish = require('./lib/publish')
+const Request = require('./lib/file-transfer/request')
+const { MetadbMessage } = require('./lib/messages')
 
 const LOCAL_FEED = 'local'
 const DB = (dir) => path.join(dir, 'feeds')
