@@ -1,7 +1,6 @@
 const EventEmitter = require('events').EventEmitter
 const pullLevel = require('pull-level')
 const pull = require('pull-stream')
-const { isAbout, isHeader } = require('../schemas')
 
 // Peers index
 
@@ -17,12 +16,13 @@ module.exports = function (level) {
       msgs.forEach(function (msg) {
         if (!sanitize(msg)) return
         pending++
-        // TODO check timestamps to make sure we get newest
+
+        // TODO check timestamps to make sure we get newest?
         // TODO only push if its not already there
         ops.push({
           type: 'put',
           key: msg.key + '!name',
-          value: msg.value.name
+          value: msg.value.about.name || {}
         })
         if (!--pending) done()
       })
@@ -57,9 +57,8 @@ module.exports = function (level) {
 }
 
 function sanitize (msg) {
-  if (typeof msg !== 'object') return null
   if (typeof msg.value !== 'object') return null
-  if (msg.value.type !== 'about') return null
-  if (isAbout(msg.value) || isHeader(msg.value)) return msg
+  // if (msg.value.about || msg.value.header) return msg
+  if (msg.value.about) return msg
   return null
 }

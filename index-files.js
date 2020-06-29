@@ -9,11 +9,10 @@ const homeDir = require('os').homedir()
 const ignore = require('./ignore.js')
 const { Sha256Instance } = require('./crypto')
 const { readableBytes } = require('./util')
-const { isAddFile } = require('./schemas') // TODO
 
-const SCHEMAVERSION = '1.0.0'
-
+// Index a given directory, extracting metadata from media files
 // TODO add a listener for pause/resume, cancel events
+
 module.exports = function indexFiles (metadb) {
   // Add files in the given directory to the index
   return function (dir, opts = {}, onStarting, onFinished) {
@@ -25,11 +24,11 @@ module.exports = function indexFiles (metadb) {
     }
     if (dir === homeDir) return onStarting(new Error('You may not index your entire home directory'))
     onStarting()
+
     const log = opts.log || console.log
+
     ignore.setup(() => {
-      // var highestSeq
       let dataAdded = 0
-      // const lowestSeq = metadb.localFeed.length
       log('Scanning directory ', dir, '...')
       glob('**/*', { cwd: dir, nodir: true }, (err, files) => {
         if (err) return onFinished(err)
@@ -48,14 +47,13 @@ module.exports = function indexFiles (metadb) {
               size += chunk.length
             })
             readStream.on('close', () => {
-              // const hash = sha256(data).toString('hex')
-              hash = sha256Instance.final().toString('hex')
+              hash = sha256Instance.final()
               if (!size) {
                 log(chalk.red(`File ${file} has length 0. Skipping.`))
                 return cb()
               }
               log(
-                `Extracting metadata from: ${chalk.green(file)} length: ${chalk.green(readableBytes(size))} ${chalk.blue(hash.slice(-8))}`
+                `Extracting metadata from: ${chalk.green(file)} length: ${chalk.green(readableBytes(size))} ${chalk.blue(hash.slice(-4).toString('hex'))}`
               )
               if (gotMetadata) {
                 publishMetadata()
@@ -72,43 +70,43 @@ module.exports = function indexFiles (metadb) {
             })
             function publishMetadata () {
               const newEntry = {
-                type: 'addFile',
                 sha256: hash,
                 filename: file,
-                version: SCHEMAVERSION,
                 size,
-                metadata: gotMetadata
+                metadata: JSON.stringify(gotMetadata)
               }
 
               // Check if an identical entry exists in the feed
               // TODO this could maybe be speeded up by first checking metadb.sharedb.get(hash)
               let duplicate = false
               const feedStream = metadb.localFeed.createReadStream({ live: false })
+
+              feedStream.on('error', cb)
+
               feedStream.on('data', (data) => {
-                delete data.timestamp
+                const dataObj = data.addFile
+
                 // To speed things up by not stringifying every entry
-                if (data.sha256 === newEntry.sha256) {
-                  // if (isEqual(newEntry, data)) { //lodash doesnt seem to work here
-                  // TODO: use deepmerge
-                  if (JSON.stringify(data) === JSON.stringify(newEntry)) { // bad solution
-                    duplicate = true
-                    log(chalk.red('File already exists in index, skipping...'))
-                    feedStream.destroy()
-                    cb(null, newEntry)
-                  }
+                if (!dataObj || (dataObj.sha256.compare(newEntry.sha256) !== 0)) return
+
+                // if (isEqual(newEntry, data)) { //lodash doesnt seem to work here
+                // TODO: use deepmerge
+                if (JSON.stringify(data) === JSON.stringify(newEntry)) { // bad solution
+                  duplicate = true
+                  log(chalk.red('File already exists in index, skipping...'))
+                  feedStream.destroy()
+                  cb(null, newEntry)
                 }
               })
 
               feedStream.on('end', () => {
                 if (!duplicate) {
-                  newEntry.timestamp = Date.now()
-                  // if (!isAddFile(newEntry)) return cb(error...)
-                  metadb.localFeed.append(newEntry, (err, seq) => {
-                    if (err) throw err
+                  metadb.publish.publishMessage(newEntry, 'addFile', (err, seq) => {
+                    if (err) throw err // TODO
                     log('Data was appended as entry #' + seq)
-                    // highestSeq = seq
                     dataAdded += 1
-                    metadb.sharedb.put(hash, { baseDir: dir, filePath: file }, (err) => {
+
+                    metadb.sharedb.put(hash.toString('hex'), { baseDir: dir, filePath: file }, (err) => {
                       if (err) return cb(err)
                       cb(null, newEntry)
                     })
@@ -120,7 +118,7 @@ module.exports = function indexFiles (metadb) {
           pull.collect((err, datas) => {
             // TODO: don't need to complain if just one file wouldnt read
             if (err) return onFinished(err)
-            // todo log feedname
+
             log('Feed key ', chalk.green(metadb.localFeed.key.toString('hex')))
             log('Number of files parsed: ', chalk.green(datas.length))
             log('Number of metadata added: ', chalk.green(dataAdded))

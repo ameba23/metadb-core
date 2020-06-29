@@ -19,8 +19,6 @@ module.exports = function (level) {
         if (!sanitize(msg)) return
         foundOne = true
         pending++
-        delete msg.value.version
-        delete msg.value.type
         // TODO dbkey
         const dbKey = msg.key + '@' + msg.seq
         level.get(dbKey, (err) => {
@@ -28,7 +26,7 @@ module.exports = function (level) {
             ops.push({
               type: 'put',
               key: msg.key + '@' + msg.seq,
-              value: msg.value
+              value: msg.value.invite
             })
           }
           if (!--pending) done()
@@ -89,9 +87,7 @@ module.exports = function (level) {
 }
 
 function sanitize (msg) {
-  if (typeof msg !== 'object') return null
   if (typeof msg.value !== 'object') return null
-  if (msg.value.type !== 'invite') return null
-  if (!isInvite(msg.value)) return null
-  return msg
+  if (msg.value.invite) return msg
+  return null
 }

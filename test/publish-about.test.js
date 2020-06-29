@@ -2,7 +2,6 @@ const test = require('tape')
 const Metadb = require('..')
 const pull = require('pull-stream')
 const tmpDir = require('tmp').dirSync
-// const { isAbout } = require('../schemas')
 
 const name = 'alice'
 
@@ -13,7 +12,6 @@ test('publish an about message', t => {
       t.error(err, 'does not throw err')
       metadb.buildIndexes(() => {
         pull(
-          // metaDb.query.custom([{ $filter: { value: { type: 'about', name } } }]),
           metadb.core.api.peers.pullStream(),
           pull.collect((err, abouts) => {
             t.error(err, 'does not throw err')
@@ -21,9 +19,6 @@ test('publish an about message', t => {
             t.equal(abouts[0].name, 'alice', 'name correct')
             t.equal(abouts[0].feedId, metadb.key.toString('hex'), 'feedId correct')
             t.end()
-            // metaDb.readMessages(() => {
-              // console.log(metaDb.peerNames)
-            // })
           })
         )
       })

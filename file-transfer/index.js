@@ -135,6 +135,10 @@ module.exports = function (metadb) {
       }
 
       this.target = tar.extract(metadb.config.downloadPath, {
+        // map: function (header) {
+        //   header.name = header.name + '.part'
+        //   return header
+        // },
         mapStream: function (fileStream, header) {
           log('[tar] ', header.name)
           fileStream.on('data', (chunk) => {
@@ -165,6 +169,9 @@ module.exports = function (metadb) {
                 files[name].verified = true
                 logObject(files)
                 verifiedHashes.push(hashToCheck.toString('hex'))
+
+                // Remove .part suffix
+                // fs.rename(name, name.slice(-5), (err) => {})
 
                 // Remove this request from our local db
                 metadb.requestsdb.del(hashToCheck.toString('hex'), (err) => {
