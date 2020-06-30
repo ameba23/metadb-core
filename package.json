@@ -49,7 +49,8 @@
     "dat",
     "kappa-core",
     "exiftool",
-    "filesharing"
+    "filesharing",
+    "file-sharing"
   ],
   "bugs": {
     "url": "https://github.com/ameba23/metadb-core/issues"
