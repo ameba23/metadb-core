@@ -13,13 +13,13 @@ This module contains the core functionality - the handshake, distributed index, 
 ## API (not yet stable, documentation very incomplete)
 
 ```js
-const MetaDb = require('metadb')
-metaDb = MetaDb(options)
+const Metadb = require('metadb')
+metaDb = Metadb(options)
 ```
 options is an optional argument containing an object with options:
-- `options.path` - a string containing the desired directory to store the database. Defaults to `~/.metadb`
+- `options.storage` - a string containing the desired directory to store the database. Defaults to `~/.metadb`
 
-### `metaDb.ready(callback)`
+### `metadb.ready(callback)`
 
 `callback` is called when the db is initialised. callback takes no arguments.
 

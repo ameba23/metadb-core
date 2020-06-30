@@ -33,9 +33,9 @@ const REQUESTS = 'r'
 const SHARES = 's'
 const DOWNLOADED = 'd'
 
-module.exports = (opts) => new MetaDb(opts)
+module.exports = (opts) => new Metadb(opts)
 
-class MetaDb {
+class Metadb {
   constructor (opts = {}) {
     this.indexesReady = false
     this.storage = opts.storage || path.join(homeDir, '.metadb')
