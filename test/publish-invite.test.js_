@@ -1,0 +1,30 @@
+const test = require('tape')
+const Metadb = require('..')
+const pull = require('pull-stream')
+const tmpDir = require('tmp').dirSync
+const { randomBytes } = require('../crypto')
+
+test('publish an invite message', t => {
+  const metadb = Metadb({ storage: tmpDir().name })
+  metadb.ready(() => {
+    metadb.buildIndexes(() => {
+      const inviteMsg = {
+        link: randomBytes(32)
+      }
+      metadb.publish.invite(inviteMsg, (err, seq) => {
+        t.notOk(err, 'does not throw err')
+        metadb.buildIndexes(() => {
+          pull(
+            metadb.invites.pull(),
+            pull.collect((err, invites) => {
+              t.error(err, 'does not throw err')
+              t.equal(invites.length, 1, 'The request message exists')
+              console.log(invites[0])
+              t.end()
+            })
+          )
+        })
+      })
+    })
+  })
+})

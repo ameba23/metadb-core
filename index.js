@@ -1,7 +1,7 @@
 const kappa = require('kappa-core')
 const path = require('path')
 const mkdirp = require('mkdirp')
-const KappaPrivate = require('kappa-private')
+// const KappaPrivate = require('kappa-private')
 const level = require('level') // -mem ?
 const sublevel = require('subleveldown')
 const homeDir = require('os').homedir()
@@ -9,17 +9,18 @@ const EventEmitter = require('events').EventEmitter
 // const thunky = require('thunky')
 const log = console.log // TODO
 
-const createFilesView = require('./views/files')
-const createPeersView = require('./views/peers')
+const createFilesView = require('./lib/views/files')
+const createPeersView = require('./lib/views/peers')
 // const createInvitesView = require('./views/invites')
 
-const IndexFiles = require('./index-files')
-const Swarm = require('./swarm')
-const config = require('./config')
-const crypto = require('./crypto')
-const Query = require('./queries')
-const Publish = require('./publish')
-const Request = require('./file-transfer/request')
+const IndexFiles = require('./lib/index-files')
+const Swarm = require('./lib/swarm')
+const config = require('./lib/config')
+const crypto = require('./lib/crypto')
+const Query = require('./lib/queries')
+const Publish = require('./lib/publish')
+const Request = require('./lib/file-transfer/request')
+const { MetadbMessage } = require('./lib/messages')
 
 const LOCAL_FEED = 'local'
 const DB = (dir) => path.join(dir, 'feeds')
@@ -39,8 +40,10 @@ class MetaDb {
     this.indexesReady = false
     this.storage = opts.storage || path.join(homeDir, '.metadb')
     mkdirp.sync(this.storage)
-    this.kappaPrivate = KappaPrivate()
+    // this.kappaPrivate = KappaPrivate()
     this.isTest = opts.test
+
+    this.config = {}
 
     // TODO downloadPath should be retrieved from and saved to config file
     this.config.downloadPath = opts.test
@@ -50,18 +53,15 @@ class MetaDb {
 
     this.peerNames = {}
     this.repliedTo = []
-    this.config = {}
-    this.config.shares = {}
     this.swarms = {}
     this.query = Query(this)
     this.publish = Publish(this)
     this.connectedPeers = {}
     this.uploadQueue = []
-    this.swarm = Swarm(this)()
 
     this.core = kappa(
       DB(this.storage), {
-        valueEncoding: this.kappaPrivate.encoder(),
+        valueEncoding: MetadbMessage,
         // multifeed gets a generic key, so we can use a single
         // instance for multiple 'swarms'
         encryptionKey: crypto.keyedHash('metadb')
@@ -89,34 +89,32 @@ class MetaDb {
     this.events = new EventEmitter()
     this.files.events.on('update', () => {})
     this.peers.events.on('update', () => {})
+    this.swarm = Swarm(this)()
   }
 
   ready (cb) {
+    const self = this
     this.core.writer(LOCAL_FEED, (err, feed) => {
       if (err) return cb(err)
       feed.ready(() => {
-        this.localFeed = feed
-        this.key = feed.key
-        this.keypair = {
+        self.localFeed = feed
+        self.key = feed.key
+        self.keypair = {
           publicKey: feed.key,
           secretKey: feed.secretKey
         }
-        this.keyHex = feed.key.toString('hex')
-        this.kappaPrivate.secretKey = feed.secretKey
-        this.events.emit('ws', 'ready')
+        self.keyHex = feed.key.toString('hex')
+        // this.kappaPrivate.secretKey = feed.secretKey
+        self.events.emit('ws', 'ready')
 
         // Connect to swarms if any were left connected:
-        this.swarm.loadSwarms((err) => {
+        self.swarm.loadSwarms((err) => {
           if (err) log('reading swarmdb:', err) // TODO
-          this.loadConfig((err) => {
+          self.loadConfig((err) => {
             if (err) return cb(err)
-            if (this.localFeed.length) return cb()
+            if (self.localFeed.length) return cb()
             // if there are no messages in the feed, publish a header message
-            this.localFeed.append({
-              type: 'metadb-header',
-              version: '1.0.0',
-              timestamp: Date.now()
-            }, cb)
+            self.publish.header(cb)
           })
         })
       })
@@ -170,13 +168,6 @@ class MetaDb {
   }
 
   indexFiles (dir, opts, started, finished) { return IndexFiles(this)(dir, opts, started, finished) }
-
-  shares () {
-    // TODO: this should map shares to files somehow for displaying in the interface
-    // Object.keys(this.config.shares).forEach(n, i) {
-    //   }
-    // )
-  }
 
   request (...args) { return Request(this)(...args) }
   unrequest (...args) { return Request.unrequest(this)(...args) }

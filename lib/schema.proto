@@ -1,0 +1,57 @@
+syntax = "proto2";
+
+message MetadbMessage {
+  oneof msg {
+    AddFile addFile = 1;
+    FileComment fileComment = 2;
+    RmFiles rmFiles = 3;
+    Invite invite = 4;
+    About about = 5;
+    Header header = 6;
+    Private private = 7;
+  }
+  optional int64 timestamp = 8;
+}
+
+message AddFile {
+  optional bytes sha256 = 1;
+  required string filename = 2;
+  optional int64 size = 3;
+  optional string metadata = 4;
+}
+
+message RmFiles {
+  repeated bytes files = 1;
+}
+
+message About {
+ optional string name = 1;
+}
+
+message Invite {
+ optional bytes link = 1;
+ optional string comment = 2;
+ /* recipients */
+}
+
+message FileComment {
+  optional bytes sha256 = 1;
+  optional string comment = 2;
+  optional bool star = 3 [default = false];
+  optional bool unstar = 4 [default = false];
+  optional string extras = 5;
+}
+
+// DEP-0007 compatible header
+// type should be 'metadb'
+message Header {
+  required string type = 1;
+  optional bytes metadata = 2;
+}
+
+message Private {
+  oneof ciphertext {
+    bytes asymmetric = 1;
+    bytes symmetric = 2;
+  }
+}

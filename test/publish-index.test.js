@@ -8,7 +8,7 @@ const pathToIndex = path.join(path.resolve(__dirname), './test-media')
 const donkeyHash = '843b5593e6e1f23daeefb66fa5e49ba7800f5a4b84c03c91fac7f18fb2a3663f'
 
 test('index a directory', t => {
-  var metadb = Metadb({ path: tmpDir().name })
+  const metadb = Metadb({ storage: tmpDir().name })
   metadb.ready(() => {
     metadb.indexFiles(pathToIndex, (err) => {
       t.error(err, 'no error on starting indexing')
@@ -19,7 +19,6 @@ test('index a directory', t => {
           t.error(err, 'no error on getting file by hash')
           t.equal(fileObj.sha256, donkeyHash, 'donkey picture hashes match')
           t.equal(fileObj.holders[0], metadb.key.toString('hex'), 'holders has the correct key')
-          t.equal(Object.values(metadb.config.shares)[0], pathToIndex, 'path to index stored')
         })
 
         pull(
