@@ -4,7 +4,8 @@
   "description": "Index and share media files peer-to-peer using kappa-core",
   "main": "index.js",
   "scripts": {
-    "test": "tape test/**/*.test.js | tap-spec"
+   "test": "tape test/**/*.test.js | tap-spec",
+   "protobuf": "protocol-buffers lib/schema.proto -o lib/messages.js"
   },
   "author": "ameba23",
   "license": "AGPL-3.0-only",
