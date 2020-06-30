@@ -58,7 +58,6 @@ class MetaDb {
     this.publish = Publish(this)
     this.connectedPeers = {}
     this.uploadQueue = []
-    this.swarm = Swarm(this)()
 
     this.core = kappa(
       DB(this.storage), {
@@ -90,6 +89,7 @@ class MetaDb {
     this.events = new EventEmitter()
     this.files.events.on('update', () => {})
     this.peers.events.on('update', () => {})
+    this.swarm = Swarm(this)()
   }
 
   ready (cb) {
