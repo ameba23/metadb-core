@@ -7,7 +7,7 @@ const sublevel = require('subleveldown')
 const homeDir = require('os').homedir()
 const EventEmitter = require('events').EventEmitter
 // const thunky = require('thunky')
-const log = console.log // TODO
+const log = require('debug')('metadb')
 
 const createFilesView = require('./lib/views/files')
 const createPeersView = require('./lib/views/peers')
@@ -34,6 +34,7 @@ const SHARES = 's'
 const DOWNLOADED = 'd'
 
 module.exports = (opts) => new Metadb(opts)
+module.exports.loadConfig = (opts, cb) => config.load(opts)(cb)
 
 class Metadb {
   constructor (opts = {}) {
@@ -52,11 +53,11 @@ class Metadb {
     mkdirp.sync(this.config.downloadPath)
 
     this.peerNames = {}
-    this.repliedTo = []
     this.swarms = {}
     this.query = Query(this)
     this.publish = Publish(this)
     this.connectedPeers = {}
+    this.indexQueue = []
     this.uploadQueue = []
 
     this.core = kappa(
@@ -67,8 +68,8 @@ class Metadb {
         encryptionKey: crypto.keyedHash('metadb')
       }
     )
-
     this.db = level(VIEWS(this.storage))
+
     this.core.use('files', createFilesView(
       sublevel(this.db, FILES, { valueEncoding: 'json' })
     ))
@@ -140,7 +141,6 @@ class Metadb {
         bytesInDb: self.bytesInDb,
         peers,
         peerNames: self.peerNames,
-        // connections: Object.keys(this.swarms).filter(s => this.swarms[s]),
         swarms: self.swarms,
         config: self.config,
         connectedPeers: Object.keys(self.connectedPeers),
@@ -186,6 +186,7 @@ class Metadb {
   }
 
   emitWs (messageObject) {
+    // try {} catch?
     this.events.emit('ws', JSON.stringify(messageObject))
   }
 }
