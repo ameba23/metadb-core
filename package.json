@@ -19,7 +19,7 @@
     "js-yaml": "^3.13.1",
     "kappa-core": "^6.0.0",
     "level": "^5.0.1",
-    "metadata-extract": "git+https://git@github.com/ameba23/metadata-extract.git",
+    "metadata-extract": "^1.0.1",
     "minimatch": "^3.0.4",
     "mkdirp": "^0.5.1",
     "multiplex": "^6.7.0",
