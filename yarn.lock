@@ -1089,9 +1089,9 @@ levelup@^4.3.1, levelup@^4.3.2:
     xtend "~4.0.0"
 
 lodash@^4.17.10:
-  version "4.17.15"
-  resolved "https://registry.yarnpkg.com/lodash/-/lodash-4.17.15.tgz#b447f6670a0455bbfeedd11392eff330ea097548"
-  integrity sha512-8xOcRHvCjnocdS5cpwXQXVzmmh5e5+saE2QGoeQmbKmRS6J3VQppPOIt0MnmE+4xlZoumy0GPG0D0MVIQbNA1A==
+  version "4.17.19"
+  resolved "https://registry.yarnpkg.com/lodash/-/lodash-4.17.19.tgz#e48ddedbe30b3321783c5b4301fbd353bc1e4a4b"
+  integrity sha512-JNvd8XER9GQX0v2qJgsaN/mzFCNA5BRe/j8JN9d+tWyGLSodKQHKFicdwNYzWwI3wjRnaKPsGj1XkBjx/F96DQ==
 
 looper@^2.0.0:
   version "2.0.0"
@@ -1135,9 +1135,10 @@ merkle-tree-stream@^3.0.3:
     flat-tree "^1.3.0"
     readable-stream "^2.0.5"
 
-"metadata-extract@git+https://git@github.com/ameba23/metadata-extract.git":
+metadata-extract@^1.0.1:
   version "1.0.1"
-  resolved "git+https://git@github.com/ameba23/metadata-extract.git#aa18c995cac3400b8c0e7a7bc89f02d86a4b888f"
+  resolved "https://registry.yarnpkg.com/metadata-extract/-/metadata-extract-1.0.1.tgz#5fcf5e1afd22cd7f792e53b27293911ab0e1d32d"
+  integrity sha512-raYed1u6IgvO1FyH47AqHJNo5x9pQbt6Yb+MsXpuwLUykOhEmVN8x0FG9ksDukXZJEqcHqsqefK77ei6OwBgsQ==
   dependencies:
     epub "^1.2.1"
     exiftool "^0.0.3"
