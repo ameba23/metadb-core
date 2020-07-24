@@ -24,7 +24,6 @@
     "mkdirp": "^0.5.1",
     "multiplex": "^6.7.0",
     "protocol-buffers-encodings": "^1.1.0",
-    "pull-glob": "^1.0.7",
     "pull-level": "^2.0.4",
     "pull-stream": "^3.6.9",
     "pump": "^3.0.0",
