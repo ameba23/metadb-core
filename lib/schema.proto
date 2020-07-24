@@ -1,16 +1,17 @@
 syntax = "proto2";
 
 message MetadbMessage {
+  optional int64 timestamp = 1;
   oneof msg {
-    AddFile addFile = 1;
-    FileComment fileComment = 2;
-    RmFiles rmFiles = 3;
-    Invite invite = 4;
-    About about = 5;
-    Header header = 6;
-    Private private = 7;
+    AddFile addFile = 2;
+    FileComment fileComment = 3;
+    RmFiles rmFiles = 4;
+    Invite invite = 5;
+    About about = 6;
+    Header header = 7;
+    WallMessage wallMessage = 8;
+    Private private = 9;
   }
-  optional int64 timestamp = 8;
 }
 
 message AddFile {
@@ -25,13 +26,13 @@ message RmFiles {
 }
 
 message About {
- optional string name = 1;
+  optional string name = 1;
 }
 
 message Invite {
- optional bytes link = 1;
- optional string comment = 2;
- /* recipients */
+  optional bytes link = 1;
+  optional string comment = 2;
+  /* recipients */
 }
 
 message FileComment {
@@ -47,6 +48,10 @@ message FileComment {
 message Header {
   required string type = 1;
   optional bytes metadata = 2;
+}
+
+message WallMessage {
+  optional string message = 1;
 }
 
 message Private {

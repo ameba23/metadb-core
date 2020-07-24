@@ -1,7 +1,6 @@
 const kappa = require('kappa-core')
 const path = require('path')
 const mkdirp = require('mkdirp')
-// const KappaPrivate = require('kappa-private')
 const level = require('level') // -mem ?
 const sublevel = require('subleveldown')
 const homeDir = require('os').homedir()
@@ -11,7 +10,8 @@ const log = require('debug')('metadb')
 
 const createFilesView = require('./lib/views/files')
 const createPeersView = require('./lib/views/peers')
-// const createInvitesView = require('./views/invites')
+// const createInvitesView = require('./lib/views/invites')
+// const createWallMessagesView = require('./lib/views/wall-messages')
 
 const IndexFiles = require('./lib/index-files')
 const Swarm = require('./lib/swarm')
@@ -41,7 +41,6 @@ class Metadb {
     this.indexesReady = false
     this.storage = opts.storage || path.join(homeDir, '.metadb')
     mkdirp.sync(this.storage)
-    // this.kappaPrivate = KappaPrivate()
     this.isTest = opts.test
 
     this.config = {}
@@ -69,6 +68,12 @@ class Metadb {
       }
     )
     this.db = level(VIEWS(this.storage))
+    this.db.on('error', (err) => {
+      if (err.type === 'OpenError') {
+        console.log('Unable to open database.  Either metadb is already running or lockfile needs to be removed')
+      }
+      console.log(err)
+    })
 
     this.core.use('files', createFilesView(
       sublevel(this.db, FILES, { valueEncoding: 'json' })
@@ -78,6 +83,10 @@ class Metadb {
     ))
     // this.core.use('invites', createInvitesView(
     //   sublevel(this.db, INVITES, { valueEncoding: 'json' })
+    // ))
+    // this.core.use('wallMessages', createWallMessagesView(
+    //   sublevel(this.db, WALL_MESSAGES, { valueEncoding: 'json' }),
+    //   this.swarms
     // ))
     this.requestsdb = sublevel(this.db, REQUESTS, { valueEncoding: 'json' })
     this.downloadeddb = sublevel(this.db, DOWNLOADED, { valueEncoding: 'json' })
@@ -105,12 +114,11 @@ class Metadb {
           secretKey: feed.secretKey
         }
         self.keyHex = feed.key.toString('hex')
-        // this.kappaPrivate.secretKey = feed.secretKey
         self.events.emit('ws', 'ready')
 
         // Connect to swarms if any were left connected:
         self.swarm.loadSwarms((err) => {
-          if (err) log('reading swarmdb:', err) // TODO
+          if (err) log('Reading swarmdb:', err) // TODO
           self.loadConfig((err) => {
             if (err) return cb(err)
             if (self.localFeed.length) return cb()
@@ -135,6 +143,7 @@ class Metadb {
     if (!this.indexesReady) this.buildIndexes(this.getSettings(cb))
     this.query.peers((err, peers) => {
       if (err) return cb(err)
+
       cb(null, {
         key: self.keyHex,
         filesInDb: self.filesInDb,
@@ -145,7 +154,9 @@ class Metadb {
         config: self.config,
         connectedPeers: Object.keys(self.connectedPeers),
         downloadPath: self.config.downloadPath,
-        homeDir
+        homeDir,
+        indexing: self.indexing,
+        indexProgress: self.indexProgress
       })
     })
   }
@@ -158,6 +169,7 @@ class Metadb {
     }
     if (settings.downloadPath && (this.config.downloadPath !== settings.downloadPath)) {
       this.config.downloadPath = settings.downloadPath
+      this.writeConfig()
       mkdirp.sync(this.config.downloadPath)
       done()
     }
@@ -168,6 +180,19 @@ class Metadb {
   }
 
   indexFiles (dir, opts, started, finished) { return IndexFiles(this)(dir, opts, started, finished) }
+
+  cancelIndexing (dir) {
+    if (this.indexing && !dir) {
+      this.abortIndexing = true
+      return
+    }
+    if (this.indexing === dir) this.abortIndexing = true
+    this.indexQueue = this.indexQueue.filter(i => i !== dir)
+  }
+
+  resumeIndexing () {
+    if (this.indexQueue.length && !this.indexing) this.indexFiles(this.indexQueue.shift(), {}, () => {}, () => {})
+  }
 
   request (...args) { return Request(this)(...args) }
   unrequest (...args) { return Request.unrequest(this)(...args) }

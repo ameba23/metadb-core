@@ -9,7 +9,8 @@ const donkeyHash = '843b5593e6e1f23daeefb66fa5e49ba7800f5a4b84c03c91fac7f18fb2a3
 
 test('index a directory', t => {
   const metadb = Metadb({ storage: tmpDir().name })
-  metadb.ready(() => {
+  metadb.ready((err) => {
+    t.error(err, 'No error on ready')
     metadb.indexFiles(pathToIndex, (err) => {
       t.error(err, 'no error on starting indexing')
     }, (err) => {
