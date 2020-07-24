@@ -20,6 +20,7 @@ const crypto = require('./lib/crypto')
 const Query = require('./lib/queries')
 const Publish = require('./lib/publish')
 const Request = require('./lib/file-transfer/request')
+const ignore = require('./lib/ignore')
 const { MetadbMessage } = require('./lib/messages')
 
 const LOCAL_FEED = 'local'
@@ -104,26 +105,30 @@ class Metadb {
 
   ready (cb) {
     const self = this
-    this.core.writer(LOCAL_FEED, (err, feed) => {
+    ignore(this.storage, (err, ignorePatterns) => {
       if (err) return cb(err)
-      feed.ready(() => {
-        self.localFeed = feed
-        self.key = feed.key
-        self.keypair = {
-          publicKey: feed.key,
-          secretKey: feed.secretKey
-        }
-        self.keyHex = feed.key.toString('hex')
-        self.events.emit('ws', 'ready')
+      self.ignorePatterns = ignorePatterns
+      self.core.writer(LOCAL_FEED, (err, feed) => {
+        if (err) return cb(err)
+        feed.ready(() => {
+          self.localFeed = feed
+          self.key = feed.key
+          self.keypair = {
+            publicKey: feed.key,
+            secretKey: feed.secretKey
+          }
+          self.keyHex = feed.key.toString('hex')
+          self.events.emit('ws', 'ready')
 
-        // Connect to swarms if any were left connected:
-        self.swarm.loadSwarms((err) => {
-          if (err) log('Reading swarmdb:', err) // TODO
-          self.loadConfig((err) => {
-            if (err) return cb(err)
-            if (self.localFeed.length) return cb()
-            // if there are no messages in the feed, publish a header message
-            self.publish.header(cb)
+          // Connect to swarms if any were left connected:
+          self.swarm.loadSwarms((err) => {
+            if (err) log('Reading swarmdb:', err) // TODO
+            self.loadConfig((err) => {
+              if (err) return cb(err)
+              if (self.localFeed.length) return cb()
+              // if there are no messages in the feed, publish a header message
+              self.publish.header(cb)
+            })
           })
         })
       })
