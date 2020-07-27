@@ -5,6 +5,7 @@
 This module contains the core functionality - the handshake, distributed index, and file transfer.
 
 ## Complementary modules
+
 - [metadb](https://github.com/ameba23/metadb) - The top-level module. Provides an HTTP API, and a limited command-line client 
 - [metadb-http-api](https://github.com/ameba23/metadb-http-api) - http interface
 - [metadb-ui](https://github.com/ameba23/metadb-ui) a web front end using [choo](https://choo.io/)
@@ -46,11 +47,11 @@ Index a local directory. The directory will be scanned recursively and a message
 }
 ```
 
-### `metaDb.buildIndexes(callback)`
+### `metadb.buildIndexes(callback)`
 
-callback is called when the indexes are built. callback takes no arguments. Queries cannot be run until this method has run.
+callback is called when the kappa-core indexes are built. callback takes no arguments. Queries cannot be run until this method has run.
 
-### `metaDb.publishAbout(name, callback)`
+### `metadb.publishAbout(name, callback)`
 
 Publish an 'about' message with a name or other information to identify yourself on the network.
 - `name` a string to identify yourself on the network (eg: 'alice')
@@ -65,6 +66,7 @@ Publish an 'about' message with a name or other information to identify yourself
 }
 ```
 
-## Config file
+## Configuration
 
-`~/.metadb/config.yml` can be used to manually set the download directory and other settings
+- `~/.metadb/config.yml` can be used to manually set the download directory and other settings
+- `~/.metadb/ignore` is a list of patterns to ignore when indexing files (like .gitignore)
