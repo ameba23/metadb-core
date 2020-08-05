@@ -226,12 +226,17 @@ class Metadb {
 
   stop (cb) {
     // TODO: gracefully stop transfers
-    // TODO: gracefully stop file indexing
-    this.swarm.disconnect(null, (err) => {
-      if (err) log('Difficulty disconnecting from swarm', err)
-      cb()
-      process.exit(0)
-    })
+    // Gracefully stop file indexing
+    if (!this.indexing) done()
+    this.abortIndexing = done
+
+    function done () {
+      this.swarm.disconnect(null, (err) => {
+        if (err) log('Difficulty disconnecting from swarm', err)
+        cb()
+        process.exit(0)
+      })
+    }
   }
 
   emitWs (messageObject) {
