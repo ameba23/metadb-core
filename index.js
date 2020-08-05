@@ -206,6 +206,10 @@ class Metadb {
     this.storeIndexQueue.put('i', this.indexQueue)
   }
 
+  pauseIndexing () {
+    this.abortIndexing = true
+  }
+
   resumeIndexing () {
     log(`Items in index queue: ${this.indexQueue} Resuming indexing...`)
     if (this.indexQueue.length && !this.indexing) {
