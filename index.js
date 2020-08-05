@@ -225,13 +225,14 @@ class Metadb {
   loadConfig (cb) { return config.load(this)(cb) }
 
   stop (cb) {
+    const self = this
     // TODO: gracefully stop transfers
     // Gracefully stop file indexing
     if (!this.indexing) done()
     this.abortIndexing = done
 
     function done () {
-      this.swarm.disconnect(null, (err) => {
+      self.swarm.disconnect(null, (err) => {
         if (err) log('Difficulty disconnecting from swarm', err)
         cb()
         process.exit(0)
