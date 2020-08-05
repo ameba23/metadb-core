@@ -57,7 +57,6 @@ class Metadb {
     this.query = Query(this)
     this.publish = Publish(this)
     this.connectedPeers = {}
-    this.indexQueue = []
     this.uploadQueue = []
 
     this.core = kappa(
@@ -94,6 +93,7 @@ class Metadb {
     this.sharedb = sublevel(this.db, SHARES, { valueEncoding: 'json' })
     this.shareTotals = sublevel(this.db, 'ST')
     this.swarmdb = sublevel(this.db, 'SW', { valueEncoding: 'json' })
+    this.storeIndexQueue = sublevel(this.db, 'IQ', { valueEncoding: 'json' })
     this.files = this.core.api.files
     this.peers = this.core.api.peers
     // this.invites = this.core.api.invites
@@ -125,9 +125,18 @@ class Metadb {
             if (err) log('Reading swarmdb:', err) // TODO
             self.loadConfig((err) => {
               if (err) return cb(err)
-              if (self.localFeed.length) return cb()
-              // if there are no messages in the feed, publish a header message
-              self.publish.header(cb)
+              self.storeIndexQueue.get('i', (err, indexQueue) => {
+                if (err) {
+                  if (!err.notFound) return cb(err)
+                  self.indexQueue = []
+                } else {
+                  self.indexQueue = indexQueue
+                  if (indexQueue.length) self.resumeIndexing()
+                }
+                if (self.localFeed.length) return cb()
+                // if there are no messages in the feed, publish a header message
+                self.publish.header(cb)
+              })
             })
           })
         })
@@ -187,16 +196,22 @@ class Metadb {
   indexFiles (dir, opts, started, finished) { return IndexFiles(this)(dir, opts, started, finished) }
 
   cancelIndexing (dir) {
-    if (this.indexing && !dir) {
-      this.abortIndexing = true
-      return
-    }
-    if (this.indexing === dir) this.abortIndexing = true
-    this.indexQueue = this.indexQueue.filter(i => i !== dir)
+    // If no dir given, cancel the entire queue
+    const dirs = dir
+      ? Array.isArray(dir) ? dir : [dir]
+      : this.indexQueue
+
+    if (dirs.includes(this.indexing)) this.abortIndexing = true
+    this.indexQueue = this.indexQueue.filter(d => !dirs.includes(d))
+    this.storeIndexQueue.put('i', this.indexQueue)
   }
 
   resumeIndexing () {
-    if (this.indexQueue.length && !this.indexing) this.indexFiles(this.indexQueue.shift(), {}, () => {}, () => {})
+    log(`Items in index queue: ${this.indexQueue} Resuming indexing...`)
+    if (this.indexQueue.length && !this.indexing) {
+      this.indexFiles(this.indexQueue.shift(), {}, () => {}, () => {})
+      this.storeIndexQueue.put('i', this.indexQueue)
+    }
   }
 
   request (...args) { return Request(this)(...args) }
