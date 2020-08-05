@@ -154,7 +154,8 @@ class Metadb {
 
   getSettings (cb) {
     const self = this
-    if (!this.indexesReady) return this.buildIndexes(this.getSettings(cb))
+    if (!this.indexesReady) return this.buildIndexes(() => { self.getSettings(cb) })
+    // if (!this.indexesReady) return cb(new Error('Indexes not ready'))
     this.query.peers((err, peers) => {
       if (err) return cb(err)
 
