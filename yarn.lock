@@ -1218,10 +1218,10 @@ merkle-tree-stream@^3.0.3:
     flat-tree "^1.3.0"
     readable-stream "^2.0.5"
 
-metadata-extract@^1.0.1:
-  version "1.0.1"
-  resolved "https://registry.yarnpkg.com/metadata-extract/-/metadata-extract-1.0.1.tgz#5fcf5e1afd22cd7f792e53b27293911ab0e1d32d"
-  integrity sha512-raYed1u6IgvO1FyH47AqHJNo5x9pQbt6Yb+MsXpuwLUykOhEmVN8x0FG9ksDukXZJEqcHqsqefK77ei6OwBgsQ==
+metadata-extract@^1.0.2:
+  version "1.0.2"
+  resolved "https://registry.yarnpkg.com/metadata-extract/-/metadata-extract-1.0.2.tgz#1e3eeecab8a432fc20aee071cf5aa1523185954d"
+  integrity sha512-BZsvHe8xIe7knWdVmUwsV/FawTF6kAS8lZjqJJJo6QGgdGcienGL1ZsUqS9w8K82vrtvZSYIy3jK/r2iYKAoAw==
   dependencies:
     epub "^1.2.1"
     exiftool "^0.0.3"
@@ -1673,12 +1673,19 @@ pull-live@^1.0.1:
     pull-cat "^1.1.9"
     pull-stream "^3.4.0"
 
+pull-many@^1.0.9:
+  version "1.0.9"
+  resolved "https://registry.yarnpkg.com/pull-many/-/pull-many-1.0.9.tgz#eb78c2e4f5c003525d48e5b1e98fbf4f766c4202"
+  integrity sha512-+jUydDVlj/HsvtDqxWMSsiRq3B0HVo7RhBV4C0p2nZRS3mFTUEu9SPEBN+B5PMaW8KTnblYhTIaKg7oXgGnj4Q==
+  dependencies:
+    pull-stream "^3.4.5"
+
 pull-pushable@^2.0.0:
   version "2.2.0"
   resolved "https://registry.yarnpkg.com/pull-pushable/-/pull-pushable-2.2.0.tgz#5f2f3aed47ad86919f01b12a2e99d6f1bd776581"
   integrity sha1-Xy867UethpGfAbEqLpnW8b13ZYE=
 
-pull-stream@^3.2.3, pull-stream@^3.4.0, pull-stream@^3.6.14, pull-stream@^3.6.9:
+pull-stream@^3.2.3, pull-stream@^3.4.0, pull-stream@^3.4.5, pull-stream@^3.6.14, pull-stream@^3.6.9:
   version "3.6.14"
   resolved "https://registry.yarnpkg.com/pull-stream/-/pull-stream-3.6.14.tgz#529dbd5b86131f4a5ed636fdf7f6af00781357ee"
   integrity sha512-KIqdvpqHHaTUA2mCYcLG1ibEbu/LCKoJZsBWyv9lSYtPkJPBq8m3Hxa103xHi6D2thj5YXa0TqK3L3GUkwgnew==

@@ -24,6 +24,7 @@
     "multiplex": "^6.7.0",
     "protocol-buffers-encodings": "^1.1.0",
     "pull-level": "^2.0.4",
+    "pull-many": "^1.0.9",
     "pull-stream": "^3.6.9",
     "pump": "^3.0.0",
     "simple-message-channels": "^1.2.1",
