@@ -81,6 +81,8 @@ class Metadb {
     this.core.use('peers', createPeersView(
       sublevel(this.db, PEERS, { valueEncoding: 'json' })
     ))
+    // this.core._indexes.files._events.on()
+
     // this.core.use('invites', createInvitesView(
     //   sublevel(this.db, INVITES, { valueEncoding: 'json' })
     // ))
@@ -120,23 +122,19 @@ class Metadb {
           self.keyHex = feed.key.toString('hex')
           self.events.emit('ws', 'ready')
 
-          // Connect to swarms if any were left connected:
-          self.swarm.loadSwarms((err) => {
-            if (err) log('Reading swarmdb:', err) // TODO
-            self.loadConfig((err) => {
-              if (err) return cb(err)
-              self.storeIndexQueue.get('i', (err, indexQueue) => {
-                if (err) {
-                  if (!err.notFound) return cb(err)
-                  self.indexQueue = []
-                } else {
-                  self.indexQueue = indexQueue
-                  if (indexQueue.length) self.resumeIndexing()
-                }
-                if (self.localFeed.length) return cb()
-                // if there are no messages in the feed, publish a header message
-                self.publish.header(cb)
-              })
+          self.loadConfig((err) => {
+            if (err) return cb(err)
+            self.storeIndexQueue.get('i', (err, indexQueue) => {
+              if (err) {
+                if (!err.notFound) return cb(err)
+                self.indexQueue = []
+              } else {
+                self.indexQueue = indexQueue
+                // if (indexQueue.length) self.resumeIndexing()
+              }
+              if (self.localFeed.length) return cb()
+              // if there are no messages in the feed, publish a header message
+              self.publish.header(cb)
             })
           })
         })
@@ -145,10 +143,21 @@ class Metadb {
   }
 
   buildIndexes (cb) {
+    const self = this
+    log('Building database indexes...')
     this.core.ready(() => {
       // should we do if (this.key) ?
-      this.indexesReady = true
-      cb()
+      self.indexesReady = true
+      log('Database indexes built')
+
+      // When indexing is finished, connect to swarms if any were left connected:
+      self.swarm.loadSwarms((err) => {
+        if (err) log('Reading swarmdb:', err) // TODO
+
+        // Once we are finished with doing indexing, resume pulling metadata
+        if (self.indexQueue.length) self.resumeIndexing()
+        cb()
+      })
     })
   }
 
