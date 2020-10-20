@@ -5,6 +5,8 @@ const level = require('level') // -mem ?
 const sublevel = require('subleveldown')
 const homeDir = require('os').homedir()
 const EventEmitter = require('events').EventEmitter
+const pullLevel = require('pull-level')
+const pull = require('pull-stream')
 // const thunky = require('thunky')
 const log = require('debug')('metadb')
 
@@ -93,7 +95,7 @@ class Metadb {
     this.requestsdb = sublevel(this.db, REQUESTS, { valueEncoding: 'json' })
     this.downloadeddb = sublevel(this.db, DOWNLOADED, { valueEncoding: 'json' })
     this.sharedb = sublevel(this.db, SHARES, { valueEncoding: 'json' })
-    this.shareTotals = sublevel(this.db, 'ST')
+    this.shareTotals = sublevel(this.db, 'ST', { valueEncoding: 'json' })
     this.swarmdb = sublevel(this.db, 'SW', { valueEncoding: 'json' })
     this.storeIndexQueue = sublevel(this.db, 'IQ', { valueEncoding: 'json' })
     this.files = this.core.api.files
@@ -132,6 +134,7 @@ class Metadb {
                 self.indexQueue = indexQueue
                 // if (indexQueue.length) self.resumeIndexing()
               }
+              self.emitWs({ indexQueue: self.indexQueue })
               if (self.localFeed.length) return cb()
               // if there are no messages in the feed, publish a header message
               self.publish.header(cb)
@@ -213,19 +216,23 @@ class Metadb {
 
     if (dirs.includes(this.indexing)) this.abortIndexing = true
     this.indexQueue = this.indexQueue.filter(d => !dirs.includes(d))
+    this.emitWs({ indexQueue: this.indexQueue })
     this.storeIndexQueue.put('i', this.indexQueue)
   }
 
-  pauseIndexing () {
+  pauseIndexing (cb) {
     this.abortIndexing = true
+    if (cb) cb()
   }
 
-  resumeIndexing () {
+  resumeIndexing (cb) {
     log(`Items in index queue: ${this.indexQueue} Resuming indexing...`)
     if (this.indexQueue.length && !this.indexing) {
       this.indexFiles(this.indexQueue.shift(), {}, () => {}, () => {})
+      this.emitWs({ indexQueue: this.indexQueue })
       this.storeIndexQueue.put('i', this.indexQueue)
     }
+    if (cb) cb()
   }
 
   request (...args) { return Request(this)(...args) }
@@ -253,5 +260,39 @@ class Metadb {
   emitWs (messageObject) {
     // try {} catch?
     this.events.emit('ws', JSON.stringify(messageObject))
+  }
+
+  getDownloads () {
+    return pull(
+      pullLevel.read(this.downloadeddb, { live: false, reverse: true }),
+      pull.map(entry => {
+        return Object.assign({
+          hash: entry.key.split('!')[1],
+          timestamp: entry.key.split('!')[0]
+        }, entry.value)
+      })
+    )
+  }
+
+  getDownloadedFileByHash (hash, callback) {
+    if (Buffer.isBuffer(hash)) hash = hash.toString('hex')
+    const readStream = this.downloadeddb.createReadStream()
+    readStream
+      .on('data', (entry) => {
+        if (entry.key.split('!')[1] === hash) {
+          readStream.destroy()
+          return callback(null, entry.value)
+        }
+      })
+      .on('end', () => {
+        return callback(new Error('Given hash not downloaded'))
+      })
+  }
+
+  getShareTotals () {
+    return pull(
+      pullLevel.read(this.shareTotals, { live: false }),
+      pull.map(entry => Object.assign({ dir: entry.key }, entry.value))
+    )
   }
 }
