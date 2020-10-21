@@ -9,6 +9,7 @@ const pullLevel = require('pull-level')
 const pull = require('pull-stream')
 // const thunky = require('thunky')
 const log = require('debug')('metadb')
+// const util = require('util')
 
 const createFilesView = require('./lib/views/files')
 const createPeersView = require('./lib/views/peers')
@@ -69,12 +70,17 @@ class Metadb {
         encryptionKey: crypto.keyedHash('metadb')
       }
     )
+
+    this.core.on('error', (err) => {
+      console.log('Error from Kappa-core:', err)
+    })
+
     this.db = level(VIEWS(this.storage))
     this.db.on('error', (err) => {
       if (err.type === 'OpenError') {
         console.log('Unable to open database.  Either metadb is already running or lockfile needs to be removed')
       }
-      console.log(err)
+      console.log('Error from level', err)
     })
 
     this.core.use('files', createFilesView(
@@ -83,7 +89,7 @@ class Metadb {
     this.core.use('peers', createPeersView(
       sublevel(this.db, PEERS, { valueEncoding: 'json' })
     ))
-    // this.core._indexes.files._events.on()
+    // logEvents(this.core._indexes.files)
 
     // this.core.use('invites', createInvitesView(
     //   sublevel(this.db, INVITES, { valueEncoding: 'json' })
@@ -102,8 +108,22 @@ class Metadb {
     this.peers = this.core.api.peers
     // this.invites = this.core.api.invites
     this.events = new EventEmitter()
-    this.files.events.on('update', () => {})
-    this.peers.events.on('update', () => {})
+
+    this.filesInDb = 0
+    this.bytesInDb = 0
+    this.counters = {}
+    const self = this
+    this.files.events.on('update', (totals) => {
+      self.filesInDb += totals.files
+      self.bytesInDb += totals.bytes
+      Object.keys(totals.holders).forEach((holder) => {
+        self.counters[holder] = self.counters[holder] || { files: 0, bytes: 0 }
+        self.counters[holder].files += totals.holders[holder].files
+        self.counters[holder].bytes += totals.holders[holder].bytes
+      })
+    })
+
+    // this.peers.events.on('update', () => {})
     this.swarm = Swarm(this)()
   }
 
@@ -152,6 +172,13 @@ class Metadb {
       // should we do if (this.key) ?
       self.indexesReady = true
       log('Database indexes built')
+
+      // Listener to indicate when further indexing is happening
+      self.core._indexes.files.on('state-update', (state) => {
+        console.log('*******', state.state)
+        if (state.state === 'idle') self.emitWs({ dbIndexing: false })
+        if (state.state === 'indexing') self.emitWs({ dbIndexing: true })
+      })
 
       // When indexing is finished, connect to swarms if any were left connected:
       self.swarm.loadSwarms((err) => {
@@ -294,5 +321,13 @@ class Metadb {
       pullLevel.read(this.shareTotals, { live: false }),
       pull.map(entry => Object.assign({ dir: entry.key }, entry.value))
     )
+  }
+}
+function logEvents (emitter, name) {
+  let emit = emitter.emit
+  name = name ? `(${name}) ` : ''
+  emitter.emit = (...args) => {
+    console.log(`\x1b[33m${args[0]}\x1b[0m`, util.inspect(args.slice(1), { depth: 1, colors: true }))
+    emit.apply(emitter, args)
   }
 }
