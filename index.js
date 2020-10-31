@@ -36,6 +36,7 @@ const REQUESTS = 'r'
 // const INVITES = 'i'
 const SHARES = 's'
 const DOWNLOADED = 'd'
+const UPLOAD = 'u'
 
 module.exports = (opts) => new Metadb(opts)
 module.exports.loadConfig = (opts, cb) => config.load(opts)(cb)
@@ -100,6 +101,7 @@ class Metadb {
     // ))
     this.requestsdb = sublevel(this.db, REQUESTS, { valueEncoding: 'json' })
     this.downloadeddb = sublevel(this.db, DOWNLOADED, { valueEncoding: 'json' })
+    this.uploaddb = sublevel(this.db, UPLOAD, { valueEncoding: 'json' })
     this.sharedb = sublevel(this.db, SHARES, { valueEncoding: 'json' })
     this.shareTotals = sublevel(this.db, 'ST', { valueEncoding: 'json' })
     this.swarmdb = sublevel(this.db, 'SW', { valueEncoding: 'json' })
@@ -129,6 +131,7 @@ class Metadb {
 
   ready (cb) {
     const self = this
+
     ignore(this.storage, (err, ignorePatterns) => {
       if (err) return cb(err)
       self.ignorePatterns = ignorePatterns
@@ -289,9 +292,9 @@ class Metadb {
     this.events.emit('ws', JSON.stringify(messageObject))
   }
 
-  getDownloads () {
+  getDownloadsOrUploads (db) {
     return pull(
-      pullLevel.read(this.downloadeddb, { live: false, reverse: true }),
+      pullLevel.read(db, { live: false, reverse: true }),
       pull.map(entry => {
         return Object.assign({
           hash: entry.key.split('!')[1],
@@ -299,6 +302,14 @@ class Metadb {
         }, entry.value)
       })
     )
+  }
+
+  getDownloads () {
+    return this.getDownloadsOrUploads(this.downloadeddb)
+  }
+
+  getUploads () {
+    return this.getDownloadsOrUploads(this.uploaddb)
   }
 
   getDownloadedFileByHash (hash, callback) {

@@ -36,7 +36,24 @@ test('index a directory', t => {
           pull.collect((err, files) => {
             t.error(err, 'no error on subdir search')
             t.equal(files.length, 1, 'subdir contains expected number of files')
-            t.end()
+
+            metadb.publish.rmFiles(donkeyHash, (err) => {
+              t.error(err, 'no error on publish rmFile message')
+
+              metadb.buildIndexes(() => {
+                pull(
+                  metadb.core.api.files.pullStream(),
+                  pull.collect((err, files) => {
+                    t.error(err, 'no error')
+                    // console.log(JSON.stringify(files, null, 4))
+                    t.ok(files.find(file =>
+                      file.sha256 === donkeyHash && !file.holders.length
+                    ), 'Donkey picture now has 0 holders')
+                    t.end()
+                  })
+                )
+              })
+            })
           })
         )
       })
