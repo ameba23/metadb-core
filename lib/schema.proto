@@ -14,6 +14,8 @@ message MetadbMessage {
   }
 }
 
+// Share a file and add metadata
+// metadata is JSON encoded
 message AddFile {
   optional bytes sha256 = 1;
   required string filename = 2;
@@ -21,18 +23,14 @@ message AddFile {
   optional string metadata = 4;
 }
 
+// Unshare files - mark as no longer available
 message RmFiles {
   repeated bytes files = 1;
 }
 
+// Peers can set a name
 message About {
   optional string name = 1;
-}
-
-message Invite {
-  optional bytes link = 1;
-  optional string comment = 2;
-  /* recipients */
 }
 
 message FileComment {
@@ -44,19 +42,31 @@ message FileComment {
 }
 
 // DEP-0007 compatible header
+// (probably not compatible when wrapped)
 // type should be 'metadb'
 message Header {
   required string type = 1;
   optional bytes metadata = 2;
 }
 
-message WallMessage {
-  optional string message = 1;
-}
-
+// Encrypted messages
+// either to a peer (asymmetric)
+// or all members of a swarm (symmetric)
 message Private {
   oneof ciphertext {
     bytes asymmetric = 1;
     bytes symmetric = 2;
   }
+}
+
+// Generally contained in a Private message
+message WallMessage {
+  optional string message = 1;
+}
+
+// A private message to a peer
+message Invite {
+  optional bytes link = 1;
+  optional string comment = 2;
+  /* recipients */
 }

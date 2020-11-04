@@ -1,19 +1,26 @@
 syntax = "proto2";
 
+// File transfer stream messages
+
+// Used internally by the other messages to refer to
+// a file or a portion of a file
 message File {
   required bytes hash = 1;
   optional uint64 start = 2;
   optional uint64 length = 3;
 }
 
+// A request for one or more files
 message Request {
   repeated File files = 1;
 }
 
+// To cancel a request
 message Unrequest {
   repeated File files = 1;
 }
 
+// To let the requester know their message is queued
 message Queued {
   required uint64 queuePosition = 1;
   optional uint64 queueBytes = 2;
@@ -22,6 +29,7 @@ message Queued {
   repeated File files = 4;
 }
 
+// To refuse a request
 message Refuse {
   repeated File files = 1;
   optional uint64 reason = 2;

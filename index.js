@@ -65,7 +65,7 @@ class Metadb {
       DB(this.storage), {
         valueEncoding: MetadbMessage,
         // multifeed gets a generic key, so we can use a single
-        // instance for multiple 'swarms'
+        // multifeed instance for multiple 'swarms'
         encryptionKey: crypto.keyedHash('metadb')
       }
     )
@@ -77,7 +77,7 @@ class Metadb {
     this.db = level(VIEWS(this.storage))
     this.db.on('error', (err) => {
       if (err.type === 'OpenError') {
-        console.log('Unable to open database.  Either metadb is already running or lockfile needs to be removed')
+        console.log('Unable to open database. Either metadb is already running or lockfile needs to be removed')
       }
       console.log('Error from level', err)
     })
@@ -88,7 +88,6 @@ class Metadb {
     this.core.use('peers', createPeersView(
       sublevel(this.db, PEERS, { valueEncoding: 'json' })
     ))
-    // logEvents(this.core._indexes.files)
 
     // this.core.use('invites', createInvitesView(
     //   sublevel(this.db, INVITES, { valueEncoding: 'json' })
@@ -176,7 +175,6 @@ class Metadb {
 
       // Listener to indicate when further indexing is happening
       self.core._indexes.files.on('state-update', (state) => {
-        console.log('*******', state.state)
         if (state.state === 'idle') self.emitWs({ dbIndexing: false })
         if (state.state === 'indexing') self.emitWs({ dbIndexing: true })
       })
@@ -285,6 +283,7 @@ class Metadb {
     }
   }
 
+  // emit events (which can be sent to the front-end over websockets)
   emitWs (messageObject) {
     // try {} catch?
     this.events.emit('ws', JSON.stringify(messageObject))
@@ -330,13 +329,5 @@ class Metadb {
       pullLevel.read(this.shareTotals, { live: false }),
       pull.map(entry => Object.assign({ dir: entry.key }, entry.value))
     )
-  }
-}
-function logEvents (emitter, name) {
-  let emit = emitter.emit
-  name = name ? `(${name}) ` : ''
-  emitter.emit = (...args) => {
-    console.log(`\x1b[33m${args[0]}\x1b[0m`, util.inspect(args.slice(1), { depth: 1, colors: true }))
-    emit.apply(emitter, args)
   }
 }
