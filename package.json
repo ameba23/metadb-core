@@ -1,6 +1,6 @@
 {
   "name": "metadb-core",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Index and share media files peer-to-peer using kappa-core",
   "main": "index.js",
   "scripts": {
