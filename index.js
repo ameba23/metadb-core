@@ -1,15 +1,13 @@
 const kappa = require('kappa-core')
 const path = require('path')
 const mkdirp = require('mkdirp')
-const level = require('level') // -mem ?
+const level = require('level')
 const sublevel = require('subleveldown')
 const homeDir = require('os').homedir()
 const EventEmitter = require('events').EventEmitter
 const pullLevel = require('pull-level')
 const pull = require('pull-stream')
-// const thunky = require('thunky')
 const log = require('debug')('metadb')
-// const util = require('util')
 
 const createFilesView = require('./lib/views/files')
 const createPeersView = require('./lib/views/peers')
@@ -236,7 +234,7 @@ class Metadb {
     }
   }
 
-  indexFiles (dir, opts, started, finished) { return IndexFiles(this)(dir, opts, started, finished) }
+  indexFiles (...args) { return IndexFiles(this)(...args) }
 
   cancelIndexing (dir) {
     // If no dir given, cancel the entire queue
