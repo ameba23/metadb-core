@@ -7,7 +7,6 @@ This module contains the core functionality - the handshake, distributed index, 
 ## Complementary modules
 
 - [metadb](https://github.com/ameba23/metadb) - The top-level module. Provides an HTTP API, and a limited command-line client 
-- [metadb-http-api](https://github.com/ameba23/metadb-http-api) - http interface
 - [metadb-ui](https://github.com/ameba23/metadb-ui) a web front end using [choo](https://choo.io/)
 - [metadata-extract](https://github.com/ameba23/metadata-extract) - pulls metadata from media files
 
@@ -15,7 +14,7 @@ This module contains the core functionality - the handshake, distributed index, 
 
 ```js
 const Metadb = require('metadb')
-metaDb = Metadb(options)
+metadb = Metadb(options)
 ```
 options is an optional argument containing an object with options:
 - `options.storage` - a string containing the desired directory to store the database. Defaults to `~/.metadb`
