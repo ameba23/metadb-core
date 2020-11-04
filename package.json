@@ -10,7 +10,6 @@
   "author": "ameba23",
   "license": "AGPL-3.0-only",
   "dependencies": {
-    "chalk": "^2.4.2",
     "confirm-key": "^1.0.0",
     "debug": "^4.1.1",
     "deepmerge": "^3.3.0",
@@ -29,6 +28,7 @@
     "pump": "^3.0.0",
     "simple-message-channels": "^1.2.1",
     "sodium-native": "^2.4.2",
+    "stream-to-pull-stream": "^1.7.3",
     "subleveldown": "^4.1.4",
     "tar-fs": "^2.0.0"
   },
