@@ -13,9 +13,9 @@ This module contains the core functionality - the handshake, distributed index, 
 ### Description of files in `./lib`
 
 `./lib`\
-`├── config.js` - load and save yaml config\
-- `├── crypto.js` - crypto operations with sodium-native
-- `├── file-transfer`
+`├── config.js` - load and save yaml config \
+`├── crypto.js` - crypto operations with sodium-native
+`├── file-transfer`
 - `│   ├── index.js` - downloading / uploading files 
 - `│   ├── messages.js` - created by the protobuf compiler
 - `│   ├── request.js` - process requests for files
