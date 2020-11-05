@@ -44,15 +44,13 @@ class Metadb {
     this.indexesReady = false
     this.storage = opts.storage || path.join(homeDir, '.metadb')
     mkdirp.sync(this.storage)
-    this.isTest = opts.test
+    if (opts.test) console.log('Starting in development mode')
 
     this.config = {}
 
-    // TODO downloadPath should be retrieved from and saved to config file
     this.config.downloadPath = opts.test
-      ? path.join(this.storage, 'downloads')
-      : path.join(this.storage, 'downloads') // os.homedir(), 'Downloads' ?
-    mkdirp.sync(this.config.downloadPath)
+      ? path.join(this.storage, 'Downloads')
+      : path.join(homeDir, 'Downloads')
 
     this.peerNames = {}
     this.swarms = {}
@@ -146,6 +144,8 @@ class Metadb {
 
           self.loadConfig((err) => {
             if (err) return cb(err)
+            mkdirp.sync(self.config.downloadPath)
+
             self.storeIndexQueue.get('i', (err, indexQueue) => {
               if (err) {
                 if (!err.notFound) return cb(err)
