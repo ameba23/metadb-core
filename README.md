@@ -4,11 +4,11 @@
 
 This module contains the core functionality - the handshake, distributed index, and file transfer.
 
-## Complementary modules
+## Related modules
 
-- [metadb](https://github.com/ameba23/metadb) - The top-level module. Provides an HTTP API, and a limited command-line client 
-- [metadb-ui](https://github.com/ameba23/metadb-ui) a web front end using [choo](https://choo.io/)
-- [metadata-extract](https://github.com/ameba23/metadata-extract) - pulls metadata from media files
+- [`metadb`](https://github.com/ameba23/metadb) - The top-level module. Provides an HTTP API, and a limited command-line client 
+- [`metadb-ui`](https://github.com/ameba23/metadb-ui) a web front end using [choo](https://choo.io/)
+- [`metadata-extract`](https://github.com/ameba23/metadata-extract) - pulls metadata from media files
 
 ### Description of files in `./lib`
 
@@ -44,7 +44,6 @@ This module contains the core functionality - the handshake, distributed index, 
 
 - [`hyperswarm`](https://github.com/hyperswarm/hyperswarm) - distributed hash table for finding peers
 - [`kappa-core`](https://github.com/kappa-db/kappa-core) - distributed database using [`multifeed`](https://github.com/kappa-db/multifeed) and [`hypercore`](https://github.com/hypercore-protocol/hypercore)
-- [`metadata-extract`](https://github.com/ameba23/metadata-extract) - pull metadata from media files
 - [`multiplex`](https://github.com/maxogden/multiplex) - make multiple binary streams from a single one
 - [`pull-stream`](https://pull-stream.github.io/) - streams where data is pulled out rather than pushed in
 - [`simple-message-channels`](https://github.com/mafintosh/simple-message-channels) used in the file transfer protocol, and [`hypercore-protocol`](https://github.com/hypercore-protocol/hypercore-protocol)
@@ -64,7 +63,7 @@ options is an optional argument containing an object with options:
 
 `callback` is called when the db is initialised. callback takes no arguments.
 
-### `indexFiles(directory, callback)`
+### `metadb.indexFiles(directory, callback)`
 
 Index a local directory. The directory will be scanned recursively and a message published for each media file, containing its metadata.
 - `directory` is a string with a path to some media files to be indexed.
