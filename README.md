@@ -12,8 +12,8 @@ This module contains the core functionality - the handshake, distributed index, 
 
 ### Description of files in `./lib`
 
-- `./lib`
-- `├── config.js` - load and save yaml config
+`./lib`\
+`├── config.js` - load and save yaml config\
 - `├── crypto.js` - crypto operations with sodium-native
 - `├── file-transfer`
 - `│   ├── index.js` - downloading / uploading files 
