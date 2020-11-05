@@ -47,7 +47,7 @@ This module contains the core functionality - the handshake, distributed index, 
 - [`metadata-extract`](https://github.com/ameba23/metadata-extract) - pull metadata from media files
 - [`multiplex`](https://github.com/maxogden/multiplex) - make multiple binary streams from a single one
 - [`pull-stream`](https://pull-stream.github.io/) - streams where data is pulled out rather than pushed in
-- [`simple-message-channels`](https://github.com/mafintosh/simple-message-channels) used in the file transfer protocol, and [hypercore-protocol](https://github.com/hypercore-protocol/hypercore-protocol)
+- [`simple-message-channels`](https://github.com/mafintosh/simple-message-channels) used in the file transfer protocol, and [`hypercore-protocol`](https://github.com/hypercore-protocol/hypercore-protocol)
 - [`sodium-native`](https://sodium-friends.github.io/docs/) - node bindings to libsodium crypto library
 - [`tar-fs`](https://github.com/mafintosh/tar-fs) - stream files as a tar archive (used to transfer files)
 
