@@ -38,7 +38,7 @@ This module contains the core functionality - the handshake, distributed index, 
 `    ├── files.js` - files database view \
 `    ├── invites.js` - invites database view (WIP) \
 `    ├── peers.js` - peers database view \
-`    └── wall-messages.js` - wall-messages database view (WIP) \
+`    └── wall-messages.js` - wall-messages database view (WIP)
 
 ### Key dependencies
 
