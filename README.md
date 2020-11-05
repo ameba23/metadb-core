@@ -12,33 +12,33 @@ This module contains the core functionality - the handshake, distributed index, 
 
 ### Description of files in `./lib`
 
-`./lib`
-`├── config.js` - load and save yaml config
-`├── crypto.js` - crypto operations with sodium-native
-`├── file-transfer`
-`│   ├── index.js` - downloading / uploading files 
-`│   ├── messages.js` - created by the protobuf compiler
-`│   ├── request.js` - process requests for files
-`│   └── schema.proto` - protobuf message schemas for file transfer
-`├── handshake.js` - the handshake scheme
-`├── ignore.js` - for ignoring certain files when indexing
-`├── index-files.js` - for indexing local media files
-`├── messages.js` - created by the protobuf compiler
-`├── publish` 
-`│   ├── index.js` - for publishing messages to your feed
-`│   └── publish-invite.js` - WIP
-`├── queries`
-`│   ├── index.js` - queries for searching for files and peers
-`│   ├── own-files-from-hashes.js`
-`│   └── query-abouts.js`
-`├── schema.proto` - protobuf schemas for feed messages
-`├── swarm.js` - connect / disconnect from 'swarms'
-`├── util.js` - utility functions
-`└── views`
-`    ├── files.js` - files database view
-`    ├── invites.js` - invites database view (WIP)
-`    ├── peers.js` - peers database view
-`    └── wall-messages.js` - wall-messages database view (WIP)
+- `./lib`
+- `├── config.js` - load and save yaml config
+- `├── crypto.js` - crypto operations with sodium-native
+- `├── file-transfer`
+- `│   ├── index.js` - downloading / uploading files 
+- `│   ├── messages.js` - created by the protobuf compiler
+- `│   ├── request.js` - process requests for files
+- `│   └── schema.proto` - protobuf message schemas for file transfer
+- `├── handshake.js` - the handshake scheme
+- `├── ignore.js` - for ignoring certain files when indexing
+- `├── index-files.js` - for indexing local media files
+- `├── messages.js` - created by the protobuf compiler
+- `├── publish` 
+- `│   ├── index.js` - for publishing messages to your feed
+- `│   └── publish-invite.js` - WIP
+- `├── queries`
+- `│   ├── index.js` - queries for searching for files and peers
+- `│   ├── own-files-from-hashes.js`
+- `│   └── query-abouts.js`
+- `├── schema.proto` - protobuf schemas for feed messages
+- `├── swarm.js` - connect / disconnect from 'swarms'
+- `├── util.js` - utility functions
+- `└── views`
+- `    ├── files.js` - files database view
+- `    ├── invites.js` - invites database view (WIP)
+- `    ├── peers.js` - peers database view
+- `    └── wall-messages.js` - wall-messages database view (WIP)
 
 ### Key dependencies
 
