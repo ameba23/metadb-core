@@ -285,11 +285,10 @@ class Metadb {
 
   // emit events (which can be sent to the front-end over websockets)
   emitWs (messageObject) {
-    // try {} catch?
     this.events.emit('ws', JSON.stringify(messageObject))
   }
 
-  getDownloadsOrUploads (db) {
+  _getDownloadsOrUploads (db) {
     return pull(
       pullLevel.read(db, { live: false, reverse: true }),
       pull.map(entry => {
@@ -302,11 +301,11 @@ class Metadb {
   }
 
   getDownloads () {
-    return this.getDownloadsOrUploads(this.downloadeddb)
+    return this._getDownloadsOrUploads(this.downloadeddb)
   }
 
   getUploads () {
-    return this.getDownloadsOrUploads(this.uploaddb)
+    return this._getDownloadsOrUploads(this.uploaddb)
   }
 
   getDownloadedFileByHash (hash, callback) {
