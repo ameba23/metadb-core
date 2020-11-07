@@ -6,7 +6,7 @@ const tmpDir = require('tmp').dirSync
 const name = 'alice'
 
 test('publish an about message', t => {
-  const metadb = Metadb({ storage: tmpDir().name })
+  const metadb = Metadb({ storage: tmpDir().name, test: true })
   metadb.ready((err) => {
     t.error(err, 'Ready does not throw err')
     metadb.publish.about(name, (err, seq) => {

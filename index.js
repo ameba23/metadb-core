@@ -12,7 +12,7 @@ const log = require('debug')('metadb')
 const createFilesView = require('./lib/views/files')
 const createPeersView = require('./lib/views/peers')
 // const createInvitesView = require('./lib/views/invites')
-// const createWallMessagesView = require('./lib/views/wall-messages')
+const createWallMessagesView = require('./lib/views/wall-messages')
 
 const IndexFiles = require('./lib/index-files')
 const Swarm = require('./lib/swarm')
@@ -35,6 +35,7 @@ const REQUESTS = 'r'
 const SHARES = 's'
 const DOWNLOADED = 'd'
 const UPLOAD = 'u'
+const WALL_MESSAGES = 'w'
 
 module.exports = (opts) => new Metadb(opts)
 module.exports.loadConfig = (opts, cb) => config.load(opts)(cb)
@@ -89,10 +90,6 @@ class Metadb {
 
     // this.core.use('invites', createInvitesView(
     //   sublevel(this.db, INVITES, { valueEncoding: 'json' })
-    // ))
-    // this.core.use('wallMessages', createWallMessagesView(
-    //   sublevel(this.db, WALL_MESSAGES, { valueEncoding: 'json' }),
-    //   this.swarms
     // ))
     this.requestsdb = sublevel(this.db, REQUESTS, { valueEncoding: 'json' })
     this.downloadeddb = sublevel(this.db, DOWNLOADED, { valueEncoding: 'json' })
@@ -182,6 +179,20 @@ class Metadb {
       // When indexing is finished, connect to swarms if any were left connected:
       self.swarm.loadSwarms((err) => {
         if (err) log('Reading swarmdb:', err) // TODO
+
+        self.wallMessagesdb = sublevel(self.db, WALL_MESSAGES, { valueEncoding: 'json' })
+        self.core.use('wallMessages', createWallMessagesView(
+          self.wallMessagesdb,
+          self.swarms
+        ))
+        self.swarmdb.on('put', (swarmKey, connected) => {
+          if (connected) {
+            self.core.use('wallMessages', createWallMessagesView(
+              self.wallMessagesdb,
+              self.swarms
+            ))
+          }
+        })
 
         // Once we are finished with doing indexing, resume pulling metadata
         if (self.indexQueue.length) self.resumeIndexing()
@@ -277,8 +288,10 @@ class Metadb {
     function done () {
       self.swarm.disconnect(null, (err) => {
         if (err) log('Difficulty disconnecting from swarm', err)
-        cb()
-        process.exit(0)
+        self.swarm.destroy(() => {
+          cb()
+          process.exit(0)
+        })
       })
     }
   }

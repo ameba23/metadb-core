@@ -36,7 +36,9 @@ test('connect to swarm', t => {
           t.error(err, 'No error on second instance disconnecting')
           const numberSwarms = Object.keys(swarms).filter(s => swarms[s]).length
           t.equals(numberSwarms, 0, 'no connected swarms')
-          t.end()
+          metadbs[0].swarm.destroy(() => {
+            metadbs[1].swarm.destroy(t.end)
+          })
         })
       })
     })
