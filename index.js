@@ -87,6 +87,9 @@ class Metadb {
     this.core.use('peers', createPeersView(
       sublevel(this.db, PEERS, { valueEncoding: 'json' })
     ))
+    this.core.use('wallMessages', createWallMessagesView(
+      sublevel(this.db, WALL_MESSAGES, { valueEncoding: 'json' })
+    ))
 
     // this.core.use('invites', createInvitesView(
     //   sublevel(this.db, INVITES, { valueEncoding: 'json' })
@@ -180,17 +183,15 @@ class Metadb {
       self.swarm.loadSwarms((err) => {
         if (err) log('Reading swarmdb:', err) // TODO
 
-        self.wallMessagesdb = sublevel(self.db, WALL_MESSAGES, { valueEncoding: 'json' })
-        self.core.use('wallMessages', createWallMessagesView(
-          self.wallMessagesdb,
-          self.swarms
-        ))
+        self.core.api.wallMessages.updateSwarms(Object.keys(self.swarms))
+
+        self.core.api.wallMessages.events.on('update', () => {
+          self.emitWs({ updateWallMessages: true })
+        })
+
         self.swarmdb.on('put', (swarmKey, connected) => {
           if (connected) {
-            self.core.use('wallMessages', createWallMessagesView(
-              self.wallMessagesdb,
-              self.swarms
-            ))
+            self.core.api.wallMessages.updateSwarms(Object.keys(self.swarms))
           }
         })
 
@@ -245,7 +246,7 @@ class Metadb {
 
   indexFiles (...args) { return IndexFiles(this)(...args) }
 
-  cancelIndexing (dir) {
+  cancelIndexing (dir, cb) {
     // If no dir given, cancel the entire queue
     const dirs = dir
       ? Array.isArray(dir) ? dir : [dir]
@@ -255,6 +256,7 @@ class Metadb {
     this.indexQueue = this.indexQueue.filter(d => !dirs.includes(d))
     this.emitWs({ indexQueue: this.indexQueue })
     this.storeIndexQueue.put('i', this.indexQueue)
+    if (cb) cb()
   }
 
   pauseIndexing (cb) {

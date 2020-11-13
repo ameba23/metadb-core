@@ -11,7 +11,7 @@ test('index a directory', t => {
   const metadb = Metadb({ storage: tmpDir().name, test: true })
   metadb.ready((err) => {
     t.error(err, 'No error on ready')
-    metadb.indexFiles(pathToIndex, (err) => {
+    metadb.indexFiles(pathToIndex, {}, (err) => {
       t.error(err, 'no error on starting indexing')
     }, (err) => {
       t.error(err, 'no error on finishing indexing')
