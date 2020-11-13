@@ -13,7 +13,6 @@
     "confirm-key": "^1.0.0",
     "debug": "^4.1.1",
     "deepmerge": "^3.3.0",
-    "fast-glob": "^3.2.4",
     "hyperswarm": "^2.14.0",
     "js-yaml": "^3.13.1",
     "kappa-core": "^6.0.0",
