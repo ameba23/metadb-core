@@ -18,6 +18,7 @@
     "kappa-core": "^6.0.0",
     "level": "^5.0.1",
     "metadata-extract": "^1.0.3",
+    "micromatch": "^4.0.2",
     "mkdirp": "^0.5.1",
     "multiplex": "^6.7.0",
     "protocol-buffers-encodings": "^1.1.0",
@@ -27,7 +28,6 @@
     "pump": "^3.0.0",
     "simple-message-channels": "^1.2.1",
     "sodium-native": "^2.4.2",
-    "stream-to-pull-stream": "^1.7.3",
     "subleveldown": "^4.1.4",
     "tar-fs": "^2.0.0"
   },
