@@ -121,7 +121,6 @@ class Metadb {
     })
 
     // this.peers.events.on('update', () => {})
-    this.swarm = Swarm(this)()
   }
 
   ready (cb) {
@@ -140,6 +139,7 @@ class Metadb {
             secretKey: feed.secretKey
           }
           self.keyHex = feed.key.toString('hex')
+          self.swarm = Swarm(self)()
           self.events.emit('ws', 'ready')
 
           self.loadConfig((err) => {

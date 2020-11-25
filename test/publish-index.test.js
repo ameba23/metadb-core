@@ -21,6 +21,7 @@ test('index a directory', t => {
           t.equal(fileObj.sha256, donkeyHash, 'donkey picture hashes match')
           t.equal(fileObj.holders[0], metadb.key.toString('hex'), 'holders has the correct key')
         })
+        metadb.core.ready(()=> {
 
         pull(
           metadb.core.api.files.pullStream(),
@@ -56,6 +57,7 @@ test('index a directory', t => {
             })
           })
         )
+        })
       })
     })
   })

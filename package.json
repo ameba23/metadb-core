@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "tape test/**/*.test.js | tap-spec",
-    "protobuf": "protocol-buffers lib/schema.proto -o lib/messages.js"
+    "protobuf": "protocol-buffers lib/schema.proto -o lib/messages.js",
+    "protobuf-transfer": "protocol-buffers lib/file-transfer/schema.proto -o lib/file-transfer/messages.js"
   },
   "author": "ameba23",
   "license": "AGPL-3.0-only",
@@ -17,6 +18,7 @@
     "js-yaml": "^3.13.1",
     "kappa-core": "^6.0.0",
     "level": "^5.0.1",
+    "magnet-uri": "^6.1.0",
     "metadata-extract": "^1.0.3",
     "micromatch": "^4.0.2",
     "mkdirp": "^0.5.1",
@@ -28,6 +30,7 @@
     "pump": "^3.0.0",
     "simple-message-channels": "^1.2.1",
     "sodium-native": "^2.4.2",
+    "speedometer": "^1.1.0",
     "subleveldown": "^4.1.4",
     "tar-fs": "^2.0.0"
   },

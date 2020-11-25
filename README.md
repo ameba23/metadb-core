@@ -35,10 +35,10 @@ This module contains the core functionality - the handshake, distributed index, 
 `├── swarm.js` - connect / disconnect from 'swarms' \
 `├── util.js` - utility functions \
 `└── views` \
-`    ├── files.js` - files database view \
-`    ├── invites.js` - invites database view (WIP) \
-`    ├── peers.js` - peers database view \
-`    └── wall-messages.js` - wall-messages database view (WIP)
+`.   ├── files.js` - files database view \
+`.   ├── invites.js` - invites database view (WIP) \
+`.   ├── peers.js` - peers database view \
+`.   └── wall-messages.js` - wall-messages database view (WIP)
 
 ### Key dependencies
 
