@@ -1,71 +1,45 @@
 const test = require('tape')
 const tmpDir = require('tmp').dirSync
 const path = require('path')
-// const pathToIndex = path.join(path.resolve(__dirname), './test-media')
-const pull = require('pull-stream')
+const fs = require('fs')
+const multiplex = require('multiplex')
 const FileTransfer = require('../lib/file-transfer/file-transfer')
 const { randomBytes } = require('crypto')
-const donkeyHash = '843b5593e6e1f23daeefb66fa5e49ba7800f5a4b84c03c91fac7f18fb2a3663f'
-const { Duplex } = require('readable-stream')
 const { pipeline } = require('stream')
-const pump = require('pump')
-const multiplex = require('multiplex')
+
+const files = {
+  '843b5593e6e1f23daeefb66fa5e49ba7800f5a4b84c03c91fac7f18fb2a3663f': 'donkey.jpg',
+  '0396e1f8343aadf8b250e5a44a107af7162b1fd65fa14a42a9fbc2612d8efce5': 'somedir/atextfile.txt'
+}
 
 test('basic file transfer', t => {
-  // const log = debug(`metadb-file-transfer ${metadb.keyHex.slice(0, 4)}`)
-  // options.downloadPath = metadb.config.downloadPath
-  // options.getQueuePosition = function () {
-  //   return metadb.uploadQueue.length
-  // }
   const alicePk = randomBytes(32)
   const bobPk = randomBytes(32)
   function createOptions (name) {
     return {
+      downloadPath: tmpDir().name,
       hashesToFilenames: function (hash, cb) {
-        if (hash === donkeyHash) {
-          return cb(null, {
-            hash,
-            baseDir: path.resolve(__dirname),
-            filePath: './test-media/donkey.jpg'
-          })
-        }
+        const filePath = files[hash]
+
+        if (!filePath) return cb(new Error('no file'))
+        return cb(null, {
+          hash,
+          baseDir: path.join(path.resolve(__dirname), './test-media'),
+          filePath
+        })
       },
       log: function (data) {
         console.log(name, data)
       }
     }
   }
-  // function createDuplexOptions (name) {
-  //   return {
-  //     write (chunk, enc, cb) {
-  //       console.log(name, 'write', chunk.length)
-  //       cb()
-  //     },
-  //     read (n) {
-  //       console.log(name, 'read', n)
-  //     }
-  //   }
-  // }
-  // const aliceStream = new Duplex(createDuplexOptions('alice'))
-  // const bobStream = new Duplex(createDuplexOptions('bob'))
   const plex1 = multiplex()
-  plex1.on('error', (err) => {
-    console.log('Error from multiplex', err)
-  })
+  plex1.on('error', (err) => { throw err })
   const aliceStream = plex1.createSharedStream('metadb')
   const plex2 = multiplex()
-  plex2.on('error', (err) => {
-    console.log('Error from multiplex', err)
-  })
+  plex2.on('error', (err) => { throw err })
   const bobStream = plex2.createSharedStream('metadb')
-  bobStream.on('error', console.log)
 
-  // aliceStream.on('data', (data) => {
-  //   console.log('a', data.toString())
-  // })
-  // bobStream.on('data', (data) => {
-  //   console.log('b', data.toString())
-  // })
   pipeline(
     plex1,
     plex2,
@@ -78,10 +52,21 @@ test('basic file transfer', t => {
   t.ok(alice, 'alice exists')
   const bob = new FileTransfer(bobStream, alicePk, createOptions('bob'))
   t.ok(bob, 'bob exists')
-  setTimeout(() => {
-    alice.sendRequest([{ key: donkeyHash, value: {} }])
-    setTimeout(() => {
+  alice.sendRequest(Object.keys(files)
+    .map(f => { return { key: f, value: {} } })
+  )
+  alice.on('downloaded', (download) => {
+    t.ok(download, 'alice downloaded file')
+  })
+
+  let verified = 0
+  alice.on('verified', (sha256) => {
+    t.ok(Object.keys(files).includes(sha256), 'alice successfully verified file')
+    fs.stat(path.join(alice.downloadPath, files[sha256]), (err, stat) => {
+      t.error(err, 'file exists')
+    })
+    if (++verified === Object.keys(files).length) {
       t.end()
-    }, 500)
-  }, 500)
+    }
+  })
 })

@@ -6,7 +6,8 @@ syntax = "proto2";
 // a file or a portion of a file
 message File {
   optional bytes sha256 = 1;
-  optional uint64 start = 2;
+  optional uint64 offset = 2;
+  // not currently used:
   optional uint64 length = 3;
 }
 
@@ -41,10 +42,4 @@ message Header {
   optional bytes sha256 = 2;
   optional uint64 size = 4;
   optional uint64 offset = 3;
-}
-
-message Data {
-  required bytes data = 1;
-  optional uint64 offset = 3;
-  optional uint64 chunkNumber = 6;
 }
