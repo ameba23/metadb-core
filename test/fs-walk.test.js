@@ -1,21 +1,15 @@
 const test = require('tape')
-const walk = require('../lib/fs-walk')
+const walk = require('../lib/scan-files/fs-walk')
 const path = require('path')
 
 const pathToWalk = path.join(path.resolve(__dirname), './test-media')
+// const pathToWalk = path.join(path.resolve(__dirname), '..')
 
-test('finds all files in given dir', t => {
-  const foundPaths = []
-
-  const op = (pathName, cb) => {
-    setTimeout(() => {
-      foundPaths.push(pathName)
-      cb()
-    }, 1)
+test('finds all files in given dir', async t => {
+  const found = []
+  for await (const f of walk(pathToWalk, { ignorePatterns: ['yarn.lock', 'test', 'node_modules'] })) {
+    found.push(f)
   }
-  walk(pathToWalk, op, { ignorePatterns: 'thumbs.db' }, (err) => {
-    t.error(err, 'walk returns no err')
-    console.log(foundPaths)
-    t.end()
-  })
+  console.log(found)
+  t.end()
 })
