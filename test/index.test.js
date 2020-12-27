@@ -38,16 +38,12 @@ describe('basic', (context) => {
     })
 
     await requester.views.ready()
-    const entries = await new Promise((resolve, reject) => {
-      const entries = []
-      requester.query.files.stream()
-        .on('data', (data) => {
-          entries.push(data)
-        })
-        .on('end', () => {
-          resolve(entries)
-        })
-    })
+
+    const entries = []
+    for await (const entry of requester.query.files.stream()) {
+      entries.push(entry)
+    }
+
     assert.equal(entries.length, 1, 'Message successfully indexed')
     assert.equal(entries[0].filename, 'file.txt')
   })

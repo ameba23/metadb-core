@@ -318,9 +318,9 @@ core-util-is@~1.0.0:
   integrity sha1-tf1UIgqivFq1eqtxQMlAdUUDwac=
 
 corestore@^5.8.1:
-  version "5.8.1"
-  resolved "https://registry.yarnpkg.com/corestore/-/corestore-5.8.1.tgz#f43363b65005ceb4ce4d41e8d1c2d7179785e53f"
-  integrity sha512-laNgPjab4V8v+n/edlzTqtHdPIqcOLBvJugzOJCdikdd00/KGJP5tAK/N0uXmNIAqC6VoC2t5FlOnWkmwjL89w==
+  version "5.8.2"
+  resolved "https://registry.yarnpkg.com/corestore/-/corestore-5.8.2.tgz#bae8f7228db4fb0bf7417d57af60b6ac08a440af"
+  integrity sha512-8OJyqGo1m3PyVvQtUoVcKYz4m4QoBAJE/2rNMJ8SD/U03NGD1z1cYep/n/32I0f3IbujYP5+4lIfBMIDkasB2w==
   dependencies:
     call-me-maybe "^1.0.1"
     dat-encoding "^5.0.1"
@@ -685,9 +685,9 @@ gauge@~2.7.3:
     wide-align "^1.1.0"
 
 get-intrinsic@^1.0.0, get-intrinsic@^1.0.1:
-  version "1.0.1"
-  resolved "https://registry.yarnpkg.com/get-intrinsic/-/get-intrinsic-1.0.1.tgz#94a9768fcbdd0595a1c9273aacf4c89d075631be"
-  integrity sha512-ZnWP+AmS1VUaLgTRy47+zKtjTxz+0xMpx3I52i+aalBK1QP19ggLF3Db89KJX7kjfOfP2eoa01qc++GwPgufPg==
+  version "1.0.2"
+  resolved "https://registry.yarnpkg.com/get-intrinsic/-/get-intrinsic-1.0.2.tgz#6820da226e50b24894e08859469dc68361545d49"
+  integrity sha512-aeX0vrFm21ILl3+JpFFRNe9aUvp6VFZb2/CTbgLb8j75kOhvoNYjt9d8KA/tJG4gSo8nzEDedRl0h7vDmBYRVg==
   dependencies:
     function-bind "^1.1.1"
     has "^1.0.3"
@@ -868,12 +868,7 @@ inherits@2, inherits@^2.0.3, inherits@^2.0.4, inherits@~2.0.1, inherits@~2.0.3:
   resolved "https://registry.yarnpkg.com/inherits/-/inherits-2.0.4.tgz#0fa2c64f932917c3433a0ded55363aae37416b7c"
   integrity sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==
 
-ini@^1.3.5:
-  version "1.3.7"
-  resolved "https://registry.yarnpkg.com/ini/-/ini-1.3.7.tgz#a09363e1911972ea16d7a8851005d84cf09a9a84"
-  integrity sha512-iKpRpXP+CrP2jyrxvg1kMUpXDyRUFDWurxbnVT1vQPx+Wz9uCYsMIqYuSBLV+PAaZG/d7kRLKRFc9oDMsH+mFQ==
-
-ini@~1.3.0:
+ini@^1.3.5, ini@~1.3.0:
   version "1.3.8"
   resolved "https://registry.yarnpkg.com/ini/-/ini-1.3.8.tgz#a29da425b48806f34767a4efce397269af28432c"
   integrity sha512-JV/yugV2uzW5iMRSiZAyDtQd+nxtUnjeLt0acNdw98kKLrvuRVyB80tsREOE7yvGVgalhZ6RNXCmEHkUKBKxew==
@@ -1050,8 +1045,6 @@ k-bucket@^5.0.0:
   version "4.0.1"
   resolved "https://codeload.github.com/Frando/kappa-core/tar.gz/187c9f9a4ed98ab1c127c0b41709be96038ae8ce"
   dependencies:
-    inherits "^2.0.4"
-    stream-collector "^1.0.1"
     thunky "^1.1.0"
 
 last-one-wins@^1.0.4:
@@ -1832,9 +1825,9 @@ sha256-universal@^1.0.1, sha256-universal@^1.1.0:
     sha256-wasm "^2.1.0"
 
 sha256-wasm@^2.1.0:
-  version "2.1.0"
-  resolved "https://registry.yarnpkg.com/sha256-wasm/-/sha256-wasm-2.1.0.tgz#99a0360f03064ce14fc2b04b451d37bf277f4ac8"
-  integrity sha512-xhb4uSXGIotJj2Q8pWpchDjkszHeTWVoP7p9NM6TGssL/mGUOLFR7vfIrrmcG99aRRox8YiN0JukZf4ZlLWu1w==
+  version "2.1.2"
+  resolved "https://registry.yarnpkg.com/sha256-wasm/-/sha256-wasm-2.1.2.tgz#954e649d9634c3d7f604bc4bb6a4545321ee9400"
+  integrity sha512-MOddGVQmN+uULS6jnEUk7NzN57yxkT19Lbm5Mlz8mJKONx5ciFDnABZO8VokSJyvBsLCiR7cAOinMToEsifq0w==
   dependencies:
     nanoassert "^2.0.0"
 

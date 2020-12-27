@@ -8,7 +8,7 @@ const sublevel = require('subleveldown')
 // const EventEmitter = require('events')
 // const debug = require('debug')('thing')
 const crypto = require('./lib/crypto')
-const { printKey, toString } = require('./lib/util')
+const { toString } = require('./lib/util')
 const Server = require('./lib/file-transfer/server')
 const Peer = require('./lib/file-transfer/peer')
 const Views = require('./lib/views')
@@ -42,6 +42,9 @@ module.exports = class Metadb {
         self.feed.once('ready', resolve)
       }
     })
+    if (!this.feed.length) {
+      await this.append('header', { type: 'metadb' })
+    }
 
     this.keyHex = this.feed.key.toString('hex')
 
