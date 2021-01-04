@@ -10,6 +10,8 @@ test('finds all files in given dir', async t => {
   for await (const f of walk(pathToWalk, { ignorePatterns: ['yarn.lock', 'test', 'node_modules'] })) {
     found.push(f)
   }
-  console.log(found)
+  t.equals(found.length, 2, 'correct number of files')
+  t.true(found.includes('donkey.jpg'), 'correct file')
+  t.true(found.includes('someDir/sometext.txt'), 'correct file')
   t.end()
 })
