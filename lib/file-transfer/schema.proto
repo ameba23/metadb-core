@@ -11,6 +11,10 @@ message File {
   optional uint64 length = 3;
 }
 
+message Hello {
+  required bytes feed = 1;
+}
+
 // A request for one or more files
 message Request {
   required File file = 1;
