@@ -33,7 +33,7 @@ describe('basic', (context) => {
     await requester.views.ready()
 
     const entries = await iteratorToArray(requester.query.files.stream())
-
+    console.log(requester.views.kappa.flows.files.source)
     assert.equal(entries.length, 1, 'Message successfully indexed')
     assert.equal(entries[0].filename, 'file.txt')
   })
@@ -62,15 +62,18 @@ describe('basic', (context) => {
     const pathToIndex = path.join(path.resolve(__dirname), './test-media')
 
     await responder.shares.scanDir(pathToIndex, {})
-    await responder.addFeed(requester.feed.key)
 
     await responder.views.ready()
 
     await requester.addFeed(responder.feed.key)
+    await new Promise((resolve) => {
+      requester.on('added', resolve)
+    })
     await requester.views.ready()
 
     await requester.client.request(donkeyHash)
 
+    console.log(true)
     const downloaded = await new Promise((resolve) => {
       requester.client.on('downloaded', resolve)
     })

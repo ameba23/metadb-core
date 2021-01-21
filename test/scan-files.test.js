@@ -31,7 +31,8 @@ describe('basic', (context) => {
     })
     assert.equal(donkey.sha256, donkeyHash, 'donkey picture hashes match')
     assert.equal(donkey.holders[0], metadb.keyHex, 'holders has the correct key')
-    assert.equal(metadb.views.filesInDb, 2, 'two files now in db')
+    const { files } = await metadb.query.files.getTotals()
+    assert.equal(files, 2, 'two files now in db')
 
     const oneLevel = await iteratorToArray(metadb.query.files.byPath({ oneLevel: true }))
     assert.ok(oneLevel.find(f => f.filename === 'donkey.jpg'), 'donkey.jpg exists')
@@ -53,6 +54,8 @@ describe('basic', (context) => {
       assert.error(err, 'no error on get')
     })
     assert.equal(donkeyRemoved.holders.length, 0, 'donkey now has 0 holders')
-    assert.equal(metadb.views.filesInDb, 1, '1 file now in db')
+
+    const afterRemove = await metadb.query.files.getTotals()
+    assert.equal(afterRemove.files, 1, 'one file now in db')
   })
 })

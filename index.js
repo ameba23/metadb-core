@@ -5,25 +5,29 @@ const mkdirp = require('mkdirp')
 const homeDir = require('os').homedir()
 const path = require('path')
 const sublevel = require('subleveldown')
-// const EventEmitter = require('events')
-// const debug = require('debug')('thing')
+const EventEmitter = require('events')
+const log = require('debug')('metadb-core')
 const crypto = require('./lib/crypto')
-const { toString } = require('./lib/util')
+const { toString, isHexString, printKey } = require('./lib/util')
 const Server = require('./lib/file-transfer/server')
 const Client = require('./lib/file-transfer/client')
 const Views = require('./lib/views')
 const { MetadbMessage } = require('./lib/messages')
 const Shares = require('./lib/scan-files')
 const ConfigFile = require('./lib/config')
+const Swarm = require('./lib/swarm')
 
 const SHAREDB = 'S'
+const SHARETOTALS = 'ST'
 const INDEXQUEUE = 'I'
 const WISHLIST = 'W'
 const DOWNLOAD = 'D'
 const UPLOAD = 'U'
+const SWARM = 'M'
 
-module.exports = class Metadb {
+module.exports = class Metadb extends EventEmitter {
   constructor (options = {}) {
+    super()
     this.storage = options.storage || path.join(homeDir, '.metadb')
     mkdirp.sync(this.storage)
     this.options = options
@@ -39,6 +43,7 @@ module.exports = class Metadb {
     // this.config.downloadPath = options.test
     //   ? path.join(this.storage, 'Downloads')
     //   : path.join(homeDir, 'Downloads')
+    //
   }
 
   async ready () {
@@ -46,23 +51,21 @@ module.exports = class Metadb {
     const self = this
     this.feed = this.options.feed || this.store.default()
 
-    await new Promise((resolve, reject) => {
-      if (self.feed.secretKey) {
-        resolve()
-      } else {
-        self.feed.once('ready', resolve)
-      }
-    })
+    if (!self.feed.secretKey) {
+      await new Promise((resolve) => { self.feed.once('ready', resolve) })
+    }
+
     if (!this.feed.length) {
       await this.append('header', { type: 'metadb' })
     }
 
     this.keyHex = this.feed.key.toString('hex')
 
-    this.config = await this.configFile.load()
+    this.config = await this.configFile.load(this.config)
 
     this.shares = new Shares({
       db: sublevel(this.db, SHAREDB, { valueEncoding: 'json' }),
+      shareTotalsStore: sublevel(this.db, SHARETOTALS, { valueEncoding: 'json' }),
       indexQueueStore: sublevel(this.db, INDEXQUEUE, { valueEncoding: 'json' }),
       storage: this.storage,
       async pauseIndexing () {
@@ -82,10 +85,14 @@ module.exports = class Metadb {
     }
 
     self.client = new Client({
+      key: this.feed.key,
       wishlist: sublevel(this.db, WISHLIST, { valueEncoding: 'json' }),
       downloadDb: sublevel(this.db, DOWNLOAD, { valueEncoding: 'json' }),
       peers: this.peers,
-      getMetadata (hash) {
+      async getMetadata (hash) {
+        // const metadata = await self.query.files.get(hash).catch(() => {})
+        // if (metadata) return metadata
+        // await self.views.ready()
         return self.query.files.get(hash)
       },
       downloadPath: self.config.downloadPath
@@ -101,7 +108,6 @@ module.exports = class Metadb {
         return fileObject
       },
       noiseKeyToFeedKey (noiseKey) {
-        console.log('!!!', noiseKey)
         for (const peer of self.peers.values()) {
           if (Buffer.compare(peer.noiseKey, noiseKey) === 0) {
             return peer.keyHex
@@ -109,9 +115,35 @@ module.exports = class Metadb {
         }
         return undefined
       }
+    }).on('hello', (feedKey) => {
+      self.addFeed(feedKey)
+    })
+
+    this.views.kappa.on('state-update', (name, state) => {
+      // console.log('state-update', name, state)
+      if (name === 'files') {
+        self.emit('ws', { dbIndexing: (state.status !== 'ready') })
+      }
+    })
+    this.query.files.events.on('update', (totals) => {
+      self.emit('ws', { totals })
     })
 
     self.networker = new Networker(self.store, { keyPair: this.noiseKeyPair })
+    // logEvents(self.networker)
+    // self.networker.on('peer-add', () => {
+    //   console.log('PEER ADD')
+    // })
+    this.swarm = new Swarm(
+      { publicKey: this.feed.key, secretKey: this.feed.secretKey },
+      sublevel(this.db, SWARM, { valueEncoding: 'json' })
+    ).on('peer', (peerKey) => {
+      self.addFeed(peerKey)
+    })
+      .on('swarm', (name, state) => {
+        self.emit('ws', { swarm: { name, state } })
+      })
+    await this.swarm.loadPreviouslyConnected()
   }
 
   async connect () {
@@ -119,20 +151,52 @@ module.exports = class Metadb {
   }
 
   async getSettings () {
+    const totals = await this.query.files.getTotals().catch(() => {})
+    // TODO use a cache?
+    const swarms = {}
+    for await (const entry of this.swarm.db.createReadStream()) {
+      swarms[entry.key] = entry.value
+    }
     return {
       key: this.keyHex,
-      config: this.config
+      config: this.config,
+      connectedPeers: [], // TODO
+      swarms, // TODO
+      homeDir,
+      totals
     }
+  }
+
+  async setSettings ({ name, downloadPath }) {
+    if (name) {
+      const currentName = await this.query.peers.getName(this.keyHex).catch(undef)
+      if (name !== currentName) {
+        await this.about({ name })
+      }
+    }
+    if (downloadPath && (this.config.downloadPath !== downloadPath)) {
+      this.config.downloadPath = downloadPath
+      await mkdirp(this.config.downloadPath)
+      await this.configFile.save(this.config)
+    }
+    return this.getSettings()
   }
 
   async addFeed (key) {
     if (!this.feed) throw new Error('addFeed cannot be called before ready')
     key = toString(key)
+
+    if (!isHexString(key, 32)) return Promise.reject(new Error('Badly formatted feedId'))
     if (this.peers.has(key)) return
+    log(`Adding peer ${key}`)
     const feed = this.store.get({ key })
     this.client.addFeed(key, feed)
 
-    await this.networker.configure(feed.discoveryKey, { announce: false, lookup: true })
+    this.networker.configure(feed.discoveryKey, { announce: false, lookup: true }).then(() => {
+      this.emit('added', key)
+    })
+    const name = await this.query.peers.getName(key).catch(undef)
+    this.emit('ws', { peer: { feedId: key, name } })
   }
 
   async * listSharesNewestFirst () {
@@ -172,6 +236,15 @@ module.exports = class Metadb {
     await this.networker.close()
   }
 
+  async * listPeers () {
+    yield { feedId: this.keyHex, name: await this.query.peers.getName(this.keyHex).catch(undef) }
+    for (const peer of this.peers.keys()) {
+      const name = await this.query.peers.getName(peer).catch(undef)
+      // TODO stars, derived name, counters
+      yield { feedId: peer, name }
+    }
+  }
+
   // _sendMessage (recipient, type, message) { // TODO not yet used
   //   recipient = toString(recipient)
   //   if (!this.peers.has(recipient)) {
@@ -189,13 +262,24 @@ module.exports = class Metadb {
   async fileComment (commentMessage) {
     if (!commentMessage.sha256) return Promise.reject(new Error('sha256 not given'))
     commentMessage.sha256 = Buffer.from(commentMessage.sha256, 'hex')
-    await this.publishMessage('fileComment', commentMessage)
+    await this.append('fileComment', commentMessage)
+  }
+
+  async wallMessage (message, swarmName) {
+    const plain = MetadbMessage.encode({
+      wallMessage: { message },
+      timestamp: Date.now()
+    })
+
+    await this.append('private', {
+      symmetric: crypto.secretBox(plain, crypto.genericHash(swarmName))
+    })
   }
 
   async append (type, message) {
     await new Promise((resolve, reject) => {
       this.feed.append({
-        timestamp: Date.now(),
+        timestamp: type === 'private' ? undefined : Date.now(),
         [type]: message
       }, (err) => {
         if (err) return reject(err)
@@ -203,4 +287,16 @@ module.exports = class Metadb {
       })
     })
   }
+}
+
+function logEvents (emitter, name) {
+  const emit = emitter.emit
+  name = name ? `(${name}) ` : ''
+  emitter.emit = (...args) => {
+    console.log(`\x1b[33m    ----${args[0]}\x1b[0m`)
+    emit.apply(emitter, args)
+  }
+}
+function undef () {
+  return undefined
 }

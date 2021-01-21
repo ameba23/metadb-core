@@ -12,6 +12,7 @@
   "license": "AGPL-3.0-only",
   "dependencies": {
     "@corestore/networker": "^1.0.4",
+    "confirm-key": "^1.0.0",
     "corestore": "^5.8.1",
     "deepmerge": "^4.2.2",
     "js-yaml": "^3.14.1",
