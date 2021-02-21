@@ -38,6 +38,7 @@ module.exports = class Metadb extends EventEmitter {
     this.query = this.views.kappa.view
     this.configFile = new ConfigFile(this.storage)
     this.config = {}
+    this.on('ws', console.log)
 
     this.config.downloadPath = path.join(this.storage, 'Downloads')
     // this.config.downloadPath = options.test
@@ -84,7 +85,7 @@ module.exports = class Metadb extends EventEmitter {
       secretKey: crypto.edToCurveSk(self.feed.secretKey)
     }
 
-    self.client = new Client({
+    this.client = new Client({
       key: this.feed.key,
       wishlist: sublevel(this.db, WISHLIST, { valueEncoding: 'json' }),
       downloadDb: sublevel(this.db, DOWNLOAD, { valueEncoding: 'json' }),
@@ -97,8 +98,12 @@ module.exports = class Metadb extends EventEmitter {
       },
       downloadPath: self.config.downloadPath
     })
+    this.client.on('download', (info) => {
+      console.log('download', info)
+      this.emit('ws', { download: { [info.sha256]: info } })
+    })
 
-    self.server = new Server(this.feed, {
+    this.server = new Server(this.feed, {
       uploadDb: sublevel(this.db, UPLOAD, { valueEncoding: 'json' }),
       async hashesToFilenames (hash) {
         const fileObject = await self.shares.sharedb.get(hash)
@@ -157,11 +162,15 @@ module.exports = class Metadb extends EventEmitter {
     for await (const entry of this.swarm.db.createReadStream()) {
       swarms[entry.key] = entry.value
     }
+    const connectedPeers = []
+    for (const peer of this.peers.entries()) {
+      if (peer[1].connected) connectedPeers.push(peer[0])
+    }
     return {
       key: this.keyHex,
       config: this.config,
-      connectedPeers: [], // TODO
-      swarms, // TODO
+      connectedPeers,
+      swarms,
       homeDir,
       totals
     }
@@ -237,11 +246,18 @@ module.exports = class Metadb extends EventEmitter {
   }
 
   async * listPeers () {
-    yield { feedId: this.keyHex, name: await this.query.peers.getName(this.keyHex).catch(undef) }
-    for (const peer of this.peers.keys()) {
+    const { holders } = await this.query.files.getTotals().catch(() => {})
+    const peers = Array.from(this.peers.keys())
+    peers.push(this.keyHex)
+    for (const peer of peers) {
       const name = await this.query.peers.getName(peer).catch(undef)
-      // TODO stars, derived name, counters
-      yield { feedId: peer, name }
+      // TODO stars
+      yield {
+        feedId: peer,
+        name,
+        files: holders[peer] ? holders[peer].files : undefined,
+        bytes: holders[peer] ? holders[peer].bytes : undefined
+      }
     }
   }
 
