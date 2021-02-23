@@ -99,7 +99,6 @@ module.exports = class Metadb extends EventEmitter {
       downloadPath: self.config.downloadPath
     })
     this.client.on('download', (info) => {
-      console.log('download', info)
       this.emit('ws', { download: { [info.sha256]: info } })
     })
 
