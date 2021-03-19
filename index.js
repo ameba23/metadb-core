@@ -101,6 +101,9 @@ module.exports = class Metadb extends EventEmitter {
     this.client.on('download', (info) => {
       this.emit('ws', { download: { [info.sha256]: info } })
     })
+    this.client.on('downloaded', (info) => {
+      this.emit('ws', { downloaded: { [info.sha256]: info } })
+    })
 
     this.server = new Server(this.feed, {
       uploadDb: sublevel(this.db, UPLOAD, { valueEncoding: 'json' }),
@@ -152,6 +155,12 @@ module.exports = class Metadb extends EventEmitter {
 
   async connect () {
     await this.networker.configure(this.feed.discoveryKey, { announce: true, lookup: false })
+
+    for await (const feedId of this.query.peers.feedIds()) {
+      if (feedId === this.keyHex) continue
+      log('Reconnecting to peer', printKey(feedId))
+      await this.addFeed(feedId)
+    }
   }
 
   async getSettings () {
@@ -163,7 +172,7 @@ module.exports = class Metadb extends EventEmitter {
     }
     const connectedPeers = []
     for (const peer of this.peers.entries()) {
-      if (peer[1].connected) connectedPeers.push(peer[0])
+      if (peer[1].connection) connectedPeers.push(peer[0])
     }
     return {
       key: this.keyHex,
@@ -304,14 +313,14 @@ module.exports = class Metadb extends EventEmitter {
   }
 }
 
-function logEvents (emitter, name) {
-  const emit = emitter.emit
-  name = name ? `(${name}) ` : ''
-  emitter.emit = (...args) => {
-    console.log(`\x1b[33m    ----${args[0]}\x1b[0m`)
-    emit.apply(emitter, args)
-  }
-}
+// function logEvents (emitter, name) {
+//   const emit = emitter.emit
+//   name = name ? `(${name}) ` : ''
+//   emitter.emit = (...args) => {
+//     console.log(`\x1b[33m    ----${args[0]}\x1b[0m`)
+//     emit.apply(emitter, args)
+//   }
+// }
 function undef () {
   return undefined
 }
