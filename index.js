@@ -74,10 +74,21 @@ module.exports = class Metadb extends EventEmitter {
       },
       resumeIndexing () {
         self.views.kappa.resume()
+      },
+      log (message) {
+        log(`[shares] ${message}`)
+        self.emit('ws', { indexer: message })
       }
     }).on('entry', (entry) => {
       this.append('addFile', entry)
+    }).on('start', (dir) => {
+      this.emit('ws', { indexingFiles: dir })
+    }).on('finish', ({ filesParsed, filesAdded, bytesAdded }) => {
+      this.emit('ws', { indexingFiles: false })
+    }).on('abort', () => {
+      this.emit('ws', { indexingFiles: false })
     })
+
     await this.shares.ready()
 
     this.noiseKeyPair = {
