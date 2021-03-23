@@ -135,6 +135,12 @@ module.exports = class Metadb extends EventEmitter {
       }
     }).on('hello', (feedKey) => {
       self.addFeed(feedKey)
+    }).on('uploadQueue', (uploadQueue) => {
+      self.emit('ws', { uploadQueue })
+    }).on('upload', (upload) => {
+      self.emit('ws', { upload: { [upload.sha256]: upload } })
+    }).on('uploaded', (uploaded) => {
+      self.emit('ws', { uploaded: { [uploaded.sha256]: uploaded } })
     })
 
     this.views.kappa.on('state-update', (name, state) => {
