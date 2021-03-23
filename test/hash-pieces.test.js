@@ -54,3 +54,25 @@ test('hashing works in reverse order, with a duplicate chunk sent', async t => {
   t.equals(Buffer.compare(sha256, expectedHash), 0, 'Expected hash')
   t.end()
 })
+
+test('save state and resume with a new instance', async t => {
+  const file = raf(inputFile)
+  const hp = new HashPieces()
+  let offset = 0
+  const chunks = []
+  for await (const chunk of fs.createReadStream(inputFile)) {
+    chunks.push({ offset, chunk })
+    offset += chunk.length
+  }
+
+  hp.add(chunks[0].offset, chunks[0].chunk)
+
+  const hp2 = new HashPieces(hp.position, hp.getState())
+  for (const { offset, chunk } of chunks.slice(1)) {
+    hp2.add(offset, chunk)
+  }
+
+  const sha256 = await hp2.final(file)
+  t.equals(Buffer.compare(sha256, expectedHash), 0, 'Expected hash')
+  t.end()
+})
