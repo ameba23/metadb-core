@@ -83,7 +83,7 @@ describe('basic', (context) => {
     assert.equal(downloaded.peer, responder.keyHex, 'correct peer key')
 
     const downloads = await iteratorToArray(requester.client.getDownloads())
-    assert.equal(downloads[0].from, responder.keyHex, 'download recorded')
+    assert.equal(downloads[0].peer, responder.keyHex, 'download recorded')
 
     const uploads = await iteratorToArray(responder.server.getUploads())
     assert.equal(uploads[0].to, requester.keyHex, 'upload recorded')
