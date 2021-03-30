@@ -73,7 +73,6 @@ describe('basic', (context) => {
 
     await requester.client.request(donkeyHash)
 
-    console.log(true)
     const downloaded = await new Promise((resolve) => {
       requester.client.on('downloaded', resolve)
     })
@@ -90,5 +89,57 @@ describe('basic', (context) => {
 
     await responder.stop()
     await requester.stop()
+  })
+
+  context('transfer file - from wishlist', async (assert) => {
+    const requester = new Metadb({ storage: requesterStorage.name })
+    await requester.ready()
+    await requester.connect()
+
+    const responder = new Metadb({ storage: responderStorage.name })
+    await responder.ready()
+    await responder.connect()
+
+    const pathToIndex = path.join(path.resolve(__dirname), './test-media')
+
+    await responder.shares.scanDir(pathToIndex, {})
+
+    await responder.views.ready()
+
+    await requester.addFeed(responder.feed.key)
+    await new Promise((resolve) => {
+      requester.on('added', resolve)
+    })
+    await requester.views.ready()
+
+    // TODO assert that we have the metadata for the file we want
+
+    // Now the responder disconnects
+    await responder.stop()
+    // We make the request whilst they are away
+    await requester.client.request(donkeyHash)
+
+    requester.client.on('downloaded', onDownloaded)
+
+    const newResponder = new Metadb({ storage: responderStorage.name })
+    await newResponder.ready()
+    console.log('responder ready')
+    await newResponder.connect()
+    console.log('responder reconnected')
+
+    async function onDownloaded (downloaded) {
+      assert.equal(downloaded.sha256, donkeyHash, 'file downloaded')
+      assert.true(downloaded.verified, 'file verified')
+      assert.equal(downloaded.peer, newResponder.keyHex, 'correct peer key')
+
+      const downloads = await iteratorToArray(requester.client.getDownloads())
+      assert.equal(downloads[0].peer, newResponder.keyHex, 'download recorded')
+
+      const uploads = await iteratorToArray(newResponder.server.getUploads())
+      assert.equal(uploads[0].to, requester.keyHex, 'upload recorded')
+
+      await newResponder.stop()
+      await requester.stop()
+    }
   })
 })
