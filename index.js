@@ -105,6 +105,7 @@ module.exports = class Metadb extends EventEmitter {
         // const metadata = await self.query.files.get(hash).catch(() => {})
         // if (metadata) return metadata
         // await self.views.ready()
+        console.log('Querying hash', hash)
         return self.query.files.get(hash)
       },
       downloadPath: self.config.downloadPath
@@ -264,10 +265,19 @@ module.exports = class Metadb extends EventEmitter {
   }
 
   async stop () {
+    const self = this
     // TODO gracefully finish uploads
     // TODO gracefully finish downloads
     // TODO gracefully finish scanning files
     await this.networker.close()
+    await this.db.close()
+    // await new Promise((resolve, reject) => {
+    //   self.feed.close((err) => {
+    //     if (err) return reject(err)
+    //     resolve()
+    //   })
+    // })
+    await this.store.close()
   }
 
   async * listPeers () {
