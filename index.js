@@ -34,6 +34,7 @@ module.exports = class Metadb extends EventEmitter {
     this.store = options.corestore || new Corestore(path.join(this.storage, 'feeds'), { valueEncoding: MetadbMessage })
     this.db = level(path.join(this.storage, 'db'))
     this.peers = new Map()
+    this.peerNoiseKeys = new Map()
     this.views = new Views(this.store, this.db)
     this.query = this.views.kappa.view
     this.configFile = new ConfigFile(this.storage)
@@ -127,8 +128,11 @@ module.exports = class Metadb extends EventEmitter {
         return fileObject
       },
       noiseKeyToFeedKey (noiseKey) {
+        const cached = self.peerNoiseKeys.get(noiseKey)
+        if (cached) return cached
         for (const peer of self.peers.values()) {
           if (Buffer.compare(peer.noiseKey, noiseKey) === 0) {
+            self.peerNoiseKeys.set(noiseKey, peer.keyHex)
             return peer.keyHex
           }
         }
