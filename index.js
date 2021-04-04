@@ -273,6 +273,7 @@ module.exports = class Metadb extends EventEmitter {
     // TODO gracefully finish uploads
     // TODO gracefully finish downloads
     // TODO gracefully finish scanning files
+    this.swarm.destroy()
     await this.networker.close()
     await this.db.close()
     // await new Promise((resolve, reject) => {
@@ -325,9 +326,8 @@ module.exports = class Metadb extends EventEmitter {
       wallMessage: { message },
       timestamp: Date.now()
     })
-
     await this.append('private', {
-      symmetric: crypto.secretBox(plain, crypto.genericHash(swarmName))
+      symmetric: crypto.secretBox(plain, this.swarm.nameToTopic(swarmName))
     })
   }
 
@@ -337,6 +337,7 @@ module.exports = class Metadb extends EventEmitter {
         timestamp: type === 'private' ? undefined : Date.now(),
         [type]: message
       }, (err) => {
+        console.log('publishing', err)
         if (err) return reject(err)
         resolve()
       })
