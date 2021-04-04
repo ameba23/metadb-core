@@ -158,11 +158,7 @@ module.exports = class Metadb extends EventEmitter {
       self.emit('ws', { totals })
     })
 
-    self.networker = new Networker(self.store, { keyPair: this.noiseKeyPair })
-    // logEvents(self.networker)
-    // self.networker.on('peer-add', () => {
-    //   console.log('PEER ADD')
-    // })
+    this.networker = new Networker(this.store, { keyPair: this.noiseKeyPair })
     this.swarm = new Swarm(
       { publicKey: this.feed.key, secretKey: this.feed.secretKey },
       sublevel(this.db, SWARM, { valueEncoding: 'json' })
@@ -173,6 +169,16 @@ module.exports = class Metadb extends EventEmitter {
         self.emit('ws', { swarm: { name, state } })
       })
     await this.swarm.loadPreviouslyConnected()
+
+    this.query.wallMessages.updateSwarms(Array.from(this.swarm.swarms.keys()))
+    this.swarm.db.on('put', (swarmName, connected) => {
+      if (connected) {
+        self.query.wallMessages.updateSwarms(Array.from(self.swarm.swarms.keys()))
+      }
+    })
+    this.query.wallMessages.events.on('update', () => {
+      self.emit('ws', { updateWallMessages: true })
+    })
   }
 
   async connect () {
@@ -269,19 +275,12 @@ module.exports = class Metadb extends EventEmitter {
   }
 
   async stop () {
-    const self = this
     // TODO gracefully finish uploads
     // TODO gracefully finish downloads
     // TODO gracefully finish scanning files
-    this.swarm.destroy()
+    await this.swarm.close()
     await this.networker.close()
     await this.db.close()
-    // await new Promise((resolve, reject) => {
-    //   self.feed.close((err) => {
-    //     if (err) return reject(err)
-    //     resolve()
-    //   })
-    // })
     await this.store.close()
   }
 
