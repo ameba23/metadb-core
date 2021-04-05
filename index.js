@@ -45,7 +45,6 @@ module.exports = class Metadb extends EventEmitter {
     // this.config.downloadPath = options.test
     //   ? path.join(this.storage, 'Downloads')
     //   : path.join(homeDir, 'Downloads')
-    //
   }
 
   async ready () {
