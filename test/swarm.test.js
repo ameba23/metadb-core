@@ -1,46 +1,37 @@
-const test = require('tape')
-const Metadb = require('..')
-const tmpDir = require('tmp').dirSync
-const async = require('async')
-const names = ['alice', 'bob']
+const { describe } = require('tape-plus')
+const Swarm = require('../lib/swarm')
+const { keypair } = require('../lib/crypto')
 
-test('connect to swarm', t => {
-  const metadbs = []
-  async.each(names, (name, callback) => {
-    const metadb = Metadb({ storage: tmpDir().name, test: true })
-    metadb.ready(() => {
-      metadb.publish.about(name, (err, seq) => {
-        t.error(err, 'does not throw err')
-        metadb.buildIndexes(() => {
-          metadb.swarm.connect('testswarm', (err, swarms) => {
-            t.error(err, 'no error on connect to swarm')
-            const numberSwarms = Object.keys(swarms).filter(s => swarms[s]).length
-            t.equals(numberSwarms, 1, 'correct number of swarms')
-            t.equals(Object.keys(swarms)[0], 'testswarm', 'correct swarm')
-            metadbs.push(metadb)
-            callback()
-          })
-        })
+const db = {
+  put () {
+  }
+}
+
+describe('basic', (context) => {
+  context('connect to swarm', async (assert) => {
+    const aliceKeypair = keypair()
+    const bobKeypair = keypair()
+
+    const alice = new Swarm(aliceKeypair, db)
+    const bob = new Swarm(bobKeypair, db)
+
+    await new Promise((resolve, reject) => {
+      let countPeerEvents = 0
+      alice.on('peer', (peerKey) => {
+        assert.equals(Buffer.compare(peerKey, bobKeypair.publicKey), 0, 'alice gets bobs key')
+
+        if (++countPeerEvents === 2) resolve()
       })
-    })
-  }, (err) => {
-    t.error(err, 'No error')
-    // wait till we hear about another feed
-    metadbs[0].core._logs.on('feed', () => {
-      t.equals(metadbs[0].core.feeds().length, 2, 'we now have two feeds')
-      metadbs[0].swarm.disconnect('testswarm', (err, swarms) => {
-        t.error(err, 'No error on first instance disconnecting')
-        const numberSwarms = Object.keys(swarms).filter(s => swarms[s]).length
-        t.equals(numberSwarms, 0, 'no connected swarms')
-        metadbs[1].swarm.disconnect('testswarm', (err, swarms) => {
-          t.error(err, 'No error on second instance disconnecting')
-          const numberSwarms = Object.keys(swarms).filter(s => swarms[s]).length
-          t.equals(numberSwarms, 0, 'no connected swarms')
-          metadbs[0].swarm.destroy(() => {
-            metadbs[1].swarm.destroy(t.end)
-          })
-        })
+      bob.on('peer', (peerKey) => {
+        assert.equals(Buffer.compare(peerKey, aliceKeypair.publicKey), 0, 'bob gets alices key')
+        if (++countPeerEvents === 2) resolve()
       })
+      alice.join('bananas')
+      bob.join('bananas')
     })
+    alice.leave('bananas')
+    bob.leave('bananas')
+    alice.destroy()
+    bob.destroy()
   })
 })
