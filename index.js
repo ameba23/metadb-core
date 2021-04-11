@@ -286,7 +286,10 @@ module.exports = class Metadb extends EventEmitter {
   async * listPeers () {
     const { holders } = await this.query.files.getTotals().catch(() => {})
     const peers = Array.from(this.peers.keys())
+
+    // Add ourself
     peers.push(this.keyHex)
+
     for (const peer of peers) {
       const name = await this.query.peers.getName(peer).catch(undef)
       // TODO stars
@@ -301,8 +304,11 @@ module.exports = class Metadb extends EventEmitter {
         comments.push(file)
       }
 
+      const peerObj = this.peers.get(peer)
+      const feedLength = (peerObj && peerObj.feed) ? peerObj.feed.length : undefined
       yield {
         feedId: peer,
+        feedLength, // TODO this is temporary for debuging
         name,
         files: holders[peer] ? holders[peer].files : undefined,
         bytes: holders[peer] ? holders[peer].bytes : undefined,
