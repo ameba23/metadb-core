@@ -290,11 +290,24 @@ module.exports = class Metadb extends EventEmitter {
     for (const peer of peers) {
       const name = await this.query.peers.getName(peer).catch(undef)
       // TODO stars
+      const stars = []
+      for await (const file of this.query.files.starredFilesByHolder(peer)) {
+        // TODO give only name and hash?
+        stars.push(file)
+      }
+      const comments = []
+      for await (const file of this.query.files.commentedFilesByHolder(peer)) {
+        // TODO give only relevant comment, name and hash?
+        comments.push(file)
+      }
+
       yield {
         feedId: peer,
         name,
         files: holders[peer] ? holders[peer].files : undefined,
-        bytes: holders[peer] ? holders[peer].bytes : undefined
+        bytes: holders[peer] ? holders[peer].bytes : undefined,
+        stars,
+        comments
       }
     }
   }
