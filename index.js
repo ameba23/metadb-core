@@ -39,7 +39,6 @@ module.exports = class Metadb extends EventEmitter {
     this.query = this.views.kappa.view
     this.configFile = new ConfigFile(this.storage)
     this.config = {}
-    this.on('ws', console.log)
 
     this.config.downloadPath = path.join(this.storage, 'Downloads')
     // this.config.downloadPath = options.test
@@ -105,7 +104,6 @@ module.exports = class Metadb extends EventEmitter {
         // const metadata = await self.query.files.get(hash).catch(() => {})
         // if (metadata) return metadata
         // await self.views.ready()
-        console.log('Querying hash', hash)
         return self.query.files.get(hash)
       },
       downloadPath: self.config.downloadPath
@@ -148,7 +146,6 @@ module.exports = class Metadb extends EventEmitter {
     })
 
     this.views.kappa.on('state-update', (name, state) => {
-      // console.log('state-update', name, state)
       if (name === 'files') {
         self.emit('ws', { dbIndexing: (state.status !== 'ready') })
       }
@@ -354,7 +351,6 @@ module.exports = class Metadb extends EventEmitter {
         timestamp: type === 'private' ? undefined : Date.now(),
         [type]: message
       }, (err) => {
-        console.log('publishing', err)
         if (err) return reject(err)
         resolve()
       })
