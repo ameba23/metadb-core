@@ -15,7 +15,7 @@ describe('basic', (context) => {
   })
 
   context('index a directory', async (assert) => {
-    const metadb = new Metadb({ storage: storage.name })
+    const metadb = new Metadb({ storage: storage.name, test: true })
     await metadb.ready()
 
     const pathToIndex = path.join(path.resolve(__dirname), './test-media')
