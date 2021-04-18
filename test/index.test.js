@@ -20,7 +20,7 @@ describe('basic', (context) => {
   })
 
   context('kappa works', async (assert) => {
-    const requester = new Metadb({ storage: requesterStorage.name })
+    const requester = new Metadb({ storage: requesterStorage.name, test: true })
     await requester.ready()
 
     await requester.append('addFile', {
@@ -39,7 +39,7 @@ describe('basic', (context) => {
   })
 
   context('publish about message with name', async (assert) => {
-    const requester = new Metadb({ storage: requesterStorage.name })
+    const requester = new Metadb({ storage: requesterStorage.name, test: true })
     await requester.ready()
 
     await requester.about('george')
@@ -52,10 +52,10 @@ describe('basic', (context) => {
   })
 
   context('transfer file', async (assert) => {
-    const requester = new Metadb({ storage: requesterStorage.name })
+    const requester = new Metadb({ storage: requesterStorage.name, test: true })
     await requester.ready()
     await requester.connect()
-    const responder = new Metadb({ storage: responderStorage.name })
+    const responder = new Metadb({ storage: responderStorage.name, test: true })
     await responder.ready()
     await responder.connect()
 
@@ -92,11 +92,11 @@ describe('basic', (context) => {
   })
 
   context('transfer file - from wishlist', async (assert) => {
-    const requester = new Metadb({ storage: requesterStorage.name })
+    const requester = new Metadb({ storage: requesterStorage.name, test: true })
     await requester.ready()
     await requester.connect()
 
-    const responder = new Metadb({ storage: responderStorage.name })
+    const responder = new Metadb({ storage: responderStorage.name, test: true })
     await responder.ready()
     await responder.connect()
 
@@ -121,11 +121,9 @@ describe('basic', (context) => {
 
     requester.client.on('downloaded', onDownloaded)
 
-    const newResponder = new Metadb({ storage: responderStorage.name })
+    const newResponder = new Metadb({ storage: responderStorage.name, test: true })
     await newResponder.ready()
-    console.log('responder ready')
     await newResponder.connect()
-    console.log('responder reconnected')
 
     async function onDownloaded (downloaded) {
       assert.equal(downloaded.sha256, donkeyHash, 'file downloaded')
