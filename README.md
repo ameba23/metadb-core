@@ -1,12 +1,12 @@
 ## `metadb-core`
 
-[metadb](https://github.com/ameba23/metadb) is a peer-to-peer media file metadata database and file-sharing program. Peers can extract information about their media files and replicate this data with other peers, to build a searchable distributed database of all known files.
+[harddrive-party](https://github.com/ameba23/harddrive-party) is a peer-to-peer media file metadata database and file-sharing program. Peers can extract information about their media files and replicate this data with other peers, to build a searchable distributed database of all known files.
 
 This module contains the core functionality - the distributed index and file transfer.
 
 ## Related modules
 
-- [`metadb`](https://github.com/ameba23/metadb) - The top-level module. Provides an HTTP API, and a limited command-line client 
+- [`harddrive-party`](https://github.com/ameba23/harddrive-party) - The top-level module. Provides an HTTP API, and a limited command-line client 
 - [`metadb-ui`](https://github.com/ameba23/metadb-ui) a web front end using [choo](https://choo.io/)
 - [`metadata-extract`](https://github.com/ameba23/metadata-extract) - pulls metadata from media files
 
@@ -48,5 +48,5 @@ This module contains the core functionality - the distributed index and file tra
 
 ## Configuration
 
-- `~/.metadb/config.yml` can be used to manually set the download directory and other settings
-- `~/.metadb/ignore` is a list of patterns to ignore when indexing files (like .gitignore)
+- `~/.harddrive-party/config.yml` can be used to manually set the download directory and other settings
+- `~/.harddrive-party/ignore` is a list of patterns to ignore when indexing files (like .gitignore)

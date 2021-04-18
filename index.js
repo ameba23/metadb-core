@@ -28,7 +28,7 @@ const SWARM = 'M'
 module.exports = class Metadb extends EventEmitter {
   constructor (options = {}) {
     super()
-    this.storage = options.storage || path.join(homeDir, '.metadb')
+    this.storage = options.storage || path.join(homeDir, '.harddrive-party')
     mkdirp.sync(this.storage)
     this.options = options
     this.store = options.corestore || new Corestore(path.join(this.storage, 'feeds'), { valueEncoding: MetadbMessage })
@@ -40,10 +40,9 @@ module.exports = class Metadb extends EventEmitter {
     this.configFile = new ConfigFile(this.storage)
     this.config = {}
 
-    this.config.downloadPath = path.join(this.storage, 'Downloads')
-    // this.config.downloadPath = options.test
-    //   ? path.join(this.storage, 'Downloads')
-    //   : path.join(homeDir, 'Downloads')
+    this.config.downloadPath = options.test
+      ? path.join(this.storage, 'Downloads')
+      : path.join(homeDir, 'Downloads', 'harddrive-party')
   }
 
   async ready () {
