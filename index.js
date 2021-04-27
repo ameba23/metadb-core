@@ -340,7 +340,7 @@ module.exports = class Metadb extends EventEmitter {
       timestamp: Date.now()
     })
     await this.append('private', {
-      symmetric: crypto.secretBox(plain, this.swarm.nameToTopic(swarmName))
+      symmetric: crypto.secretBox(plain, crypto.nameToWallMessageTopic(swarmName))
     })
   }
 
