@@ -177,7 +177,7 @@ module.exports = class Metadb extends EventEmitter {
   }
 
   async connect () {
-    await this.networker.configure(this.feed.discoveryKey, { announce: true, lookup: false })
+    await this.networker.configure(this.feed.discoveryKey, { announce: true, lookup: true })
 
     for await (const feedId of this.query.peers.feedIds()) {
       if (feedId === this.keyHex) continue
@@ -232,7 +232,7 @@ module.exports = class Metadb extends EventEmitter {
     const feed = this.store.get({ key })
     this.client.addFeed(key, feed)
 
-    this.networker.configure(feed.discoveryKey, { announce: false, lookup: true }).then(() => {
+    this.networker.configure(feed.discoveryKey, { announce: true, lookup: true }).then(() => {
       this.emit('added', key)
     })
     const name = await this.query.peers.getName(key).catch(undef)
