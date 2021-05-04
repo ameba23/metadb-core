@@ -33,7 +33,7 @@ describe('basic', (context) => {
     await requester.views.ready()
 
     const entries = await iteratorToArray(requester.query.files.stream())
-    console.log(requester.views.kappa.flows.files.source)
+    // console.log(requester.views.kappa.flows.files.source)
     assert.equal(entries.length, 1, 'Message successfully indexed')
     assert.equal(entries[0].filename, 'file.txt')
   })
