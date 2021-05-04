@@ -165,10 +165,14 @@ module.exports = class Metadb extends EventEmitter {
       })
     await this.swarm.loadPreviouslyConnected()
 
-    this.query.wallMessages.updateSwarms(Array.from(this.swarm.swarms.keys()))
+    function getFeed (feedId) {
+      return self.store.get(feedId)
+    }
+
+    this.query.wallMessages.updateSwarms(Array.from(this.swarm.swarms.keys()), getFeed)
     this.swarm.db.on('put', (swarmName, connected) => {
       if (connected) {
-        self.query.wallMessages.updateSwarms(Array.from(self.swarm.swarms.keys()))
+        self.query.wallMessages.updateSwarms(Array.from(self.swarm.swarms.keys()), getFeed)
       }
     })
     this.query.wallMessages.events.on('update', () => {
