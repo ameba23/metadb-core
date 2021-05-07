@@ -20,7 +20,7 @@
     "js-yaml": "^3.14.1",
     "kappa-core": "github:Frando/kappa-core#kappa5-new",
     "level": "^6.0.1",
-    "metadata-extract": "^1.0.3",
+    "metadata-extract": "^2.0.1",
     "micromatch": "^4.0.2",
     "mkdirp": "^1.0.4",
     "protocol-buffers-encodings": "^1.1.1",
