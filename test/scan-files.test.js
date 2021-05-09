@@ -31,6 +31,8 @@ describe('basic', (context) => {
     })
     assert.equal(donkey.sha256, donkeyHash, 'donkey picture hashes match')
     assert.equal(donkey.holders[0], metadb.keyHex, 'holders has the correct key')
+    assert.equal(donkey.metadata.mimeType, 'image/jpeg', 'metadata present')
+
     const { files } = await metadb.query.files.getTotals()
     assert.equal(files, 2, 'two files now in db')
 
